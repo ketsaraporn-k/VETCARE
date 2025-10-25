@@ -1,0 +1,10 @@
+# ไม่อัปโหลดโฟลเดอร์ node_modules
+backEnd/node_modules/
+frontend/node_modules/
+
+# ไม่อัปโหลดไฟล์ environment
+.env
+
+# ไม่อัปโหลดไฟล์ชั่วคราวหรือระบบ
+*.log
+.DS_Store
