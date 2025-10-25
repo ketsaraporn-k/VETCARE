@@ -1,2 +1,2 @@
-# Veterinary-Clinic-Management-System-
+# VETCAER (VeterinaryClinic ManagementSystem)
 CSI400
