@@ -6,7 +6,7 @@ const userSchema = new mongoose.Schema({
   password: { type: String, required: true }, // bcrypt เข้ารหัส
   name: { type: String, required: true },
   email: { type: String },
-  phone: { type: Number },
+  phone: { type: String },
   role: { type: String, enum: ['owner', 'staff', 'branchAdmin', 'superAdmin'], required: true },
   branchId: { type: mongoose.Schema.Types.ObjectId, ref: 'Branch', default: null },
   createdAt: { type: Date, default: Date.now },
