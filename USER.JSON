@@ -1,0 +1,34 @@
+[
+  {
+    "username": "superadmin",
+    "password": "$2a$10$9eZkXbdYrczKxOZJjgb8Fe8v9s5MfnrPClmpH1Wg5xtHk8mKX2V4e", 
+    "name": "Super Admin",
+    "email": "superadmin@clinic.com",
+    "phone": 1234567890,
+    "role": "superAdmin"
+  },
+  {
+    "username": "branch01admin",
+    "password": "$2a$10$9eZkXbdYrczKxOZJjgb8Fe8v9s5MfnrPClmpH1Wg5xtHk8mKX2V4e", 
+    "name": "Branch Admin 1",
+    "email": "admin1@clinic.com",
+    "phone": 987654321,
+    "role": "branchAdmin"
+  },
+  {
+    "username": "staff01",
+    "password": "$2a$10$9eZkXbdYrczKxOZJjgb8Fe8v9s5MfnrPClmpH1Wg5xtHk8mKX2V4e", 
+    "name": "Staff One",
+    "email": "staff1@clinic.com",
+    "phone": 555555555,
+    "role": "staff"
+  },
+  {
+    "username": "owner01",
+    "password": "$2a$10$9eZkXbdYrczKxOZJjgb8Fe8v9s5MfnrPClmpH1Wg5xtHk8mKX2V4e", 
+    "name": "Alice Owner",
+    "email": "alice@pet.com",
+    "phone": 666666666,
+    "role": "owner"
+  }
+]

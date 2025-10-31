@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pet Clinic Dashboard</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <!-- Authentication -->
+  <section id="auth-section">
+    <h2>เข้าสู่ระบบ / สมัครสมาชิก</h2>
+    <input id="username" placeholder="Username">
+    <input id="password" placeholder="Password" type="password">
+    <button onclick="login()">Login</button>
+    <button onclick="register()">Register</button>
+    <p id="auth-msg"></p>
+  </section>
+
+  <!-- Profile -->
+  <section id="profile-section" class="hidden">
+    <h2>โปรไฟล์ของฉัน</h2>
+    <p>ชื่อ: <span id="profile-name"></span></p>
+    <p>อีเมล: <input id="profile-email"></p>
+    <p>โทรศัพท์: <input id="profile-phone"></p>
+    <p>บทบาท: <span id="profile-role"></span></p>
+    <button onclick="updateProfile()">อัปเดตข้อมูล</button>
+    <button onclick="logout()">Logout</button>
+  </section>
+
+  <!-- Pets -->
+  <section id="pets-section" class="hidden">
+    <h2>สัตว์เลี้ยงของฉัน</h2>
+    <ul id="pet-list"></ul>
+    <input id="pet-name" placeholder="ชื่อสัตว์เลี้ยง">
+    <input id="pet-type" placeholder="ประเภท เช่น สุนัข แมว">
+    <button onclick="addPet()">เพิ่มสัตว์เลี้ยง</button>
+
+    <!-- Tab History -->
+    <div id="pet-history-tabs" class="hidden">
+      <h3>ประวัติสัตว์เลี้ยง</h3>
+      <select id="pet-select-tab" onchange="loadPetHistory()"></select>
+      <div id="pet-history-content">
+        <div id="general-info"></div>
+        <div id="vaccinations"></div>
+        <div id="treatments"></div>
+        <div id="appointments"></div>
+      </div>
+    </div>
+
+    <!-- Booking -->
+    <h3>จองคิว</h3>
+    <select id="booking-pet"></select>
+    <input type="date" id="booking-date">
+    <button onclick="bookAppointment()">จองคิว</button>
+  </section>
+
+  <!-- Admin / Staff Dashboard -->
+  <section id="admin-section" class="hidden">
+    <h2>Dashboard Admin / Staff</h2>
+    <h3>ผู้ใช้ทั้งหมด</h3>
+    <table id="user-table">
+      <thead><tr><th>Username</th><th>ชื่อ</th><th>Email</th><th>Role</th></tr></thead>
+      <tbody></tbody>
+    </table>
+
+    <h3>สัตว์ทั้งหมด</h3>
+    <table id="admin-pet-table">
+      <thead><tr><th>ชื่อ</th><th>ประเภท</th><th>เจ้าของ</th><th>จัดการ</th></tr></thead>
+      <tbody></tbody>
+    </table>
+  </section>
+
+  <!-- Modal Edit Pet -->
+  <div id="modal" class="hidden">
+    <div class="modal-content">
+      <h3>แก้ไขสัตว์</h3>
+      <input id="modal-pet-name" placeholder="ชื่อสัตว์">
+      <input id="modal-pet-type" placeholder="ประเภท">
+      <button onclick="savePet()">บันทึก</button>
+      <button onclick="closeModal()">ปิด</button>
+    </div>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>
