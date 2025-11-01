@@ -2,6 +2,14 @@ const express = require('express');
 const router = express.Router();
 const Vaccination = require('../models/Vaccination');
 
+//Nori
+const auth = require('../middleware/auth');
+const role = require('../middleware/role');
+const controller = require('../controllers/vaccinationController');
+
+router.post('/', auth, role(['staff', 'branchAdmin']), controller.addTreatment);
+router.get('/branch/:branchId', auth, controller.getByBranch);
+
 
 // === CREATE ===
 router.post('/', async (req, res) => {
