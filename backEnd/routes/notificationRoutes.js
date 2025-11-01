@@ -2,6 +2,12 @@ const express = require('express');
 const router = express.Router();
 const Notification = require('../models/Notification');
 
+//Nori
+const auth = require('../middleware/auth');
+const controller = require('../controllers/notificationController');
+router.get('/', auth, controller.getNotifications);
+router.put('/:id/read', auth, controller.markRead);
+
 // === CREATE ===
 router.post('/', async (req, res) => {
   try {
@@ -11,6 +17,16 @@ router.post('/', async (req, res) => {
     res.status(400).json({ error: err.message });
   }
 });
+
+// // === CREATE ===
+// router.post('/', async (req, res) => {
+//   try {
+//     const item = await Model.create(req.body);
+//     res.status(201).json(item);
+//   } catch (err) {
+//     res.status(400).json({ error: err.message });
+//   }
+// });
 
 // === READ ALL ===
 router.get('/', async (req, res) => {
