@@ -1,10 +1,10 @@
 // routes/transferRoutes.js
 const express = require('express');
 const router = express.Router();
-const TransferRequest = require('../models/TransferRequest');
-const User = require('../models/User');
-const auth = require('../middleware/auth');
-const role = require('../middleware/role');
+const TransferRequest = require('../../models/TransferRequest');
+const User = require('../../models/User');
+const auth = require('../../middleware/auth');
+const role = require('../../middleware/role');
 
 // ✅ branchAdmin ส่งคำขอย้ายสาขา
 router.post('/', auth, role(['branchAdmin']), async (req, res) => {

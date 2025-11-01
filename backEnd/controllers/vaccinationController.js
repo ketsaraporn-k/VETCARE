@@ -1,5 +1,7 @@
+//vaccinationController.js
 const Vaccination = require('../models/Vaccination');
 const Notification = require('../models/Notification');
+
 
 exports.addVaccination = async (req, res) => {
   try {
@@ -24,6 +26,19 @@ exports.addVaccination = async (req, res) => {
 exports.getByPet = async (req, res) => {
   try {
     const data = await Vaccination.find({ petId: req.params.id })
+      .populate('petId')
+      .populate('staffId')
+      .populate('branchId');
+    res.json(data);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+// vaccinationController.js
+exports.getByBranch = async (req, res) => {
+  try {
+    const data = await Vaccination.find({ branchId: req.params.branchId })
       .populate('petId')
       .populate('staffId')
       .populate('branchId');

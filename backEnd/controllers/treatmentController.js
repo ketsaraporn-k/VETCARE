@@ -1,5 +1,6 @@
 const Treatment = require('../models/Treatment');
 
+
 exports.addTreatment = async (req, res) => {
   try {
     const treatment = new Treatment(req.body);

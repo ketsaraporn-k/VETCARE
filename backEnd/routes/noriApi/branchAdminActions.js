@@ -1,9 +1,9 @@
 // routes/branchAdminActions.js
 const express = require('express');
 const router = express.Router();
-const User = require('../models/User');
-const auth = require('../middleware/auth');
-const role = require('../middleware/role');
+const User = require('../../models/User');
+const auth = require('../../middleware/auth');
+const role = require('../../middleware/role');
 
 // ✅ SuperAdmin ย้ายผู้ใช้ไปสาขาอื่นทันที
 router.put('/moveUser/:userId', auth, role(['superAdmin']), async (req, res) => {
