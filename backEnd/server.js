@@ -31,5 +31,29 @@ app.use('/api/treatments', treatmentRoutes);
 app.use('/api/medicines', medicineRoutes);
 app.use('/api/notifications', notificationRoutes);
 
+
+//Nori
+const branch = require('./routes/noriApi/branch');
+const reportRoutes = require('./routes/noriApi/report');
+const statRoutes = require('./routes/noriApi/statistics');
+const notifyRoutes = require('./routes/noriApi/notify');
+
+//Nori pop up
+const server = require('http').createServer(app);
+const io = require('socket.io')(server, { cors: { origin: '*' }});
+
+// inject io to requests
+app.use((req, res, next) => {
+  req.io = io;
+  next();
+});
+
+// routes Nori
+app.use('/api/branches2', branch);
+app.use('/api/report', reportRoutes);
+app.use('/api/stat', statRoutes);
+app.use('/api/notify', notifyRoutes);
+
+
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));

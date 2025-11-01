@@ -2,16 +2,24 @@ const express = require('express');
 const router = express.Router();
 const Vaccination = require('../models/Vaccination');
 
+//Nori
+const auth = require('../middleware/auth');
+const role = require('../middleware/role');
+const controller = require('../controllers/vaccinationController');
 
-// === CREATE ===
-router.post('/', async (req, res) => {
-  try {
-    const item = await Model.create(req.body);
-    res.status(201).json(item);
-  } catch (err) {
-    res.status(400).json({ error: err.message });
-  }
-});
+router.post('/', auth, role(['staff', 'branchAdmin']), controller.addVaccination);
+router.get('/branch/:branchId', auth, controller.getByBranch);
+
+
+// // === CREATE ===
+// router.post('/', async (req, res) => {
+//   try {
+//     const item = await Model.create(req.body);
+//     res.status(201).json(item);
+//   } catch (err) {
+//     res.status(400).json({ error: err.message });
+//   }
+// });
 
 // === READ ALL ===
 router.get('/', async (req, res) => {
