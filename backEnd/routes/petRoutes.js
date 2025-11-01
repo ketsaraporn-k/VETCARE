@@ -2,15 +2,23 @@ const express = require('express');
 const router = express.Router();
 const Pet = require('../models/Pet');
 
-// === CREATE ===
-router.post('/', async (req, res) => {
-  try {
-    const item = await Model.create(req.body);
-    res.status(201).json(item);
-  } catch (err) {
-    res.status(400).json({ error: err.message });
-  }
-});
+//Nori
+const auth = require('../middleware/auth');
+const role = require('../middleware/role');
+const controller = require('../controllers/petController');
+
+router.post('/', auth, role(['staff', 'branchAdmin']), controller.createPet);
+router.get('/branch/:branchId', auth, controller.getPetsByBranch);
+
+// // === CREATE ===
+// router.post('/', async (req, res) => {
+//   try {
+//     const item = await Model.create(req.body);
+//     res.status(201).json(item);
+//   } catch (err) {
+//     res.status(400).json({ error: err.message });
+//   }
+// });
 
 // === READ ALL ===
 router.get('/', async (req, res) => {
