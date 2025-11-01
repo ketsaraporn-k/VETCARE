@@ -54,6 +54,19 @@ app.use('/api/report', reportRoutes);
 app.use('/api/stat', statRoutes);
 app.use('/api/notify', notifyRoutes);
 
+//staff j
+const petManageRoutes = require('./staff/petmanage');
+const treatmentManageRoutes = require('./staff/treatmentManage');
+const vaccinationManageRoutes = require('./staff/vaccinationManage');
+const scheduleManageRoutes = require('./staff/scheduleManage');
+const clinicStaffManageRoutes = require('./staff/clinicStaffManage');
+//staff j
+app.use('/api/staff', petManageRoutes);
+app.use('/api/staff', treatmentManageRoutes);
+app.use('/api/staff/vaccinations', vaccinationManageRoutes); 
+app.use('/api/staff/schedules', scheduleManageRoutes);
+app.use('/api/staff-admin', clinicStaffManageRoutes);
+
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
