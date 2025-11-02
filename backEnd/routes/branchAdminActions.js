@@ -1,10 +1,10 @@
 // routes/noriApi/branchAdminActions.js
 const express = require('express');
 const router = express.Router();
-const User = require('../../models/User');
-const MoveRequest = require('../../models/MoveRequest');
-const auth = require('../../middleware/auth');
-const role = require('../../middleware/role');
+const User = require('../models/User');
+const MoveRequest = require('../models/MoveRequest');
+const auth = require('../middleware/auth');
+const role = require('../middleware/role');
 
 // -----------------
 // Create move request (branchAdmin)

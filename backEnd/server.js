@@ -40,11 +40,11 @@ app.use((req, res, next) => {
 });
 
 // Nori API routes (อยู่หลังการ inject io)
-const branchAdminActions = require('./routes/noriApi/branchAdminActions');
-const userRoleActions = require('./routes/noriApi/userRoleActions');
-const reportRoutes = require('./routes/noriApi/report');
-const statRoutes = require('./routes/noriApi/statistics');
-const notifyRoutes = require('./routes/noriApi/notify');
+const branchAdminActions = require('./routes/branchAdminActions');
+const userRoleActions = require('./routes/userRoleActions');
+const reportRoutes = require('./routes/report');
+const statRoutes = require('./routes/statistics');
+const notifyRoutes = require('./routes/notify');
 
 
 

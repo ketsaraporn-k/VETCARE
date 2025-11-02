@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const Notification = require('../../models/Notification');
+const Notification = require('../models/Notification');
 
 // GET แจ้งเตือนทั้งหมดของผู้ใช้
 router.get('/:userId', async (req, res) => {

@@ -1,9 +1,9 @@
 // backEnd/routes/noriApi/userRoleActions.js
 const express = require('express');
 const router = express.Router();
-const User = require('../../models/User');
-const auth = require('../../middleware/auth');
-const checkRole = require('../../middleware/role');
+const User = require('../models/User');
+const auth = require('../middleware/auth');
+const checkRole = require('../middleware/role');
 
 // ✅ SuperAdmin เปลี่ยน role ของ user คนอื่นได้
 router.put('/changeRole/:userId', auth, checkRole(['superAdmin']), async (req, res) => {

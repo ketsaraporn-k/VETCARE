@@ -1,9 +1,9 @@
 const express = require('express');
 const router = express.Router();
-const Branch = require('../../models/Branch');
-const Medicine = require('../../models/Medicine');
-const Vaccination = require('../../models/Vaccination');
-const Pet = require('../../models/Pet');
+const Branch = require('../models/Branch');
+const Medicine = require('../models/Medicine');
+const Vaccination = require('../models/Vaccination');
+const Pet = require('../models/Pet');
 
 // GET ข้อมูลรวมทุกสาขา
 router.get('/branches', async (req, res) => {

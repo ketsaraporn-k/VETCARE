@@ -14,6 +14,11 @@ import Appointments from "./pages/Appointments";
 import Inventory from "./pages/Inventory";
 import CashFlow from "./pages/CashFlow";
 import SuperAdmin from "./pages/SuperAdmin";
+import BranchManage from "./pages/BranchManage";
+import MoveRequest from "./pages/MoveRequest";
+import MoveRequestsList from "./pages/MoveRequestsList";
+import BranchTransfer from "./pages/BranchTransfer";
+
 
 // Admin pages (placeholders)
 import AdminDashboard from "./pages/admin/Dashboard";
@@ -67,6 +72,13 @@ function App() {
               <Route path="admin/dashboard" element={<AdminDashboard user={user} />} />
               <Route path="admin/inventory-update" element={<InventoryUpdate user={user} />} />
               <Route path="admin/stock-alerts" element={<StockAlerts user={user} />} />
+              <Route path="branches/manage" element={<BranchManage user={user} />} />
+
+              {/* inside <Routes> protected area: */}
+                <Route path="branches/manage" element={<BranchManage user={user} />} />
+                <Route path="branches/transfer-request" element={<MoveRequest user={user} />} />
+                <Route path="branches/move-requests" element={<MoveRequestsList user={user} />} />
+                <Route path="branches/transfer" element={<BranchTransfer user={user} />} />
             </Route>
 
             <Route path="/login" element={<Navigate to="/" replace />} />

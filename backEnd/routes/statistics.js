@@ -1,12 +1,12 @@
 //statistics.js
 const express = require('express');
 const router = express.Router();
-const Pet = require('../../models/Pet');
-const Vaccination = require('../../models/Vaccination');
-const Treatment = require('../../models/Treatment');
-const Medicine = require('../../models/Medicine');
-const auth = require('../../middleware/auth');
-const role = require('../../middleware/role');
+const Pet = require('../models/Pet');
+const Vaccination = require('../models/Vaccination');
+const Treatment = require('../models/Treatment');
+const Medicine = require('../models/Medicine');
+const auth = require('../middleware/auth');
+const role = require('../middleware/role');
 
 // ✅ สถิติทุกสาขา (SuperAdmin)
 router.get('/all', auth, role(['superAdmin']), async (req, res) => {

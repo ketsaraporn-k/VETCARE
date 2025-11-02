@@ -1,0 +1,9 @@
+.branch-manage-page table {
+  border-collapse: collapse;
+  width: 100%;
+}
+
+.branch-manage-page th, .branch-manage-page td {
+  border-bottom: 1px solid #ddd;
+  padding: 8px;
+}

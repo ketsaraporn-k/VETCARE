@@ -1,6 +1,6 @@
 // cron/checkAlerts.js
-const Medicine = require('../../models/Medicine');
-const Vaccination = require('../../models/Vaccination');
+const Medicine = require('../models/Medicine');
+const Vaccination = require('../models/Vaccination');
 const { sendNotification } = require('../utils/notify');
 
 async function checkLowStock() {
