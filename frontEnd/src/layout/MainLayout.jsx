@@ -2,7 +2,7 @@ import React from "react";
 import { useLocation, Outlet } from "react-router-dom";
 import Sidebar from "../components/Sidebar";
 import HeaderBreadcrumb from "../components/HeaderBreadcrumb";
-import "./MainLayout.css"; // ✅ นำเข้าไฟล์ CSS ที่แยกออกมา
+import "./MainLayout.css";
 
 const MainLayout = ({ user, onLogout }) => {
   const location = useLocation();
@@ -22,8 +22,6 @@ const MainLayout = ({ user, onLogout }) => {
     subtitle = "View and update your profile information";
   }
 
-  console.log("MainLayout user:", user);
-  
   return (
     <div className="main-layout">
       <Sidebar user={user} onLogout={onLogout} />
