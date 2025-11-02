@@ -9,6 +9,17 @@ import PetDetail from "./pages/PetDetail";
 import Profile from "./pages/Profile";
 import Auth from "./components/Auth";
 
+// Additional pages (placeholders / real files)
+import Appointments from "./pages/Appointments";
+import Inventory from "./pages/Inventory";
+import CashFlow from "./pages/CashFlow";
+import SuperAdmin from "./pages/SuperAdmin";
+
+// Admin pages (placeholders)
+import AdminDashboard from "./pages/admin/Dashboard";
+import InventoryUpdate from "./pages/admin/InventoryUpdate";
+import StockAlerts from "./pages/admin/StockAlerts";
+
 // Layout
 import MainLayout from "./layout/MainLayout";
 
@@ -32,8 +43,6 @@ function App() {
     if (storedUser) setUser(JSON.parse(storedUser));
   }, []);
 
-  // ถ้ายังไม่ล็อกอิน → ไปหน้า /login (หรือแสดง Auth)
-  // ผมใช้ route /login เพื่อรองรับการเข้าหน้าตรง ๆ
   return (
     <Router>
       <Routes>
@@ -49,8 +58,17 @@ function App() {
               <Route path="pets" element={<Pets user={user} />} />
               <Route path="pet-detail/:id" element={<PetDetail user={user} />} />
               <Route path="profile" element={<Profile user={user} />} />
-              {/* เพิ่ม routes อื่น ๆ ที่ต้องการ */}
+              <Route path="appointments" element={<Appointments user={user} />} />
+              <Route path="inventory" element={<Inventory user={user} />} />
+              <Route path="cash" element={<CashFlow user={user} />} />
+              <Route path="superadmin" element={<SuperAdmin user={user} />} />
+
+              {/* admin nested or separate routes */}
+              <Route path="admin/dashboard" element={<AdminDashboard user={user} />} />
+              <Route path="admin/inventory-update" element={<InventoryUpdate user={user} />} />
+              <Route path="admin/stock-alerts" element={<StockAlerts user={user} />} />
             </Route>
+
             <Route path="/login" element={<Navigate to="/" replace />} />
           </>
         )}
