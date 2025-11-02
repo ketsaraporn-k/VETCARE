@@ -26,12 +26,6 @@ app.use('/api/treatments', treatmentRoutes);
 app.use('/api/medicines', medicineRoutes);
 app.use('/api/notifications', notificationRoutes);
 
-
-//Nori
-const reportRoutes = require('./routes/noriApi/report');
-const statRoutes = require('./routes/noriApi/statistics');
-const notifyRoutes = require('./routes/noriApi/notify');
-
 //Nori pop up
 const server = require('http').createServer(app);
 const io = require('socket.io')(server, { cors: { origin: '*' }});
@@ -42,7 +36,16 @@ app.use((req, res, next) => {
   next();
 });
 
+//Nori
+const branchAdminActions = require('./routes/noriApi/branchAdminActions');
+const reportRoutes = require('./routes/noriApi/report');
+const statRoutes = require('./routes/noriApi/statistics');
+const notifyRoutes = require('./routes/noriApi/notify');
+
+
+
 // routes Nori
+app.use('/api/branchActions', branchAdminActions);
 app.use('/api/report', reportRoutes);
 app.use('/api/stat', statRoutes);
 app.use('/api/notify', notifyRoutes);
