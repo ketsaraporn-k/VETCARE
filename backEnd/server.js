@@ -41,6 +41,7 @@ app.use((req, res, next) => {
 
 // Nori API routes (อยู่หลังการ inject io)
 const branchAdminActions = require('./routes/noriApi/branchAdminActions');
+const userRoleActions = require('./routes/noriApi/userRoleActions');
 const reportRoutes = require('./routes/noriApi/report');
 const statRoutes = require('./routes/noriApi/statistics');
 const notifyRoutes = require('./routes/noriApi/notify');
@@ -48,6 +49,7 @@ const notifyRoutes = require('./routes/noriApi/notify');
 
 
 // NOTE: เปลี่ยน mount เป็น /api/branchAdmin ให้ตรงกับชื่อไฟล์
+app.use('/api/admin', userRoleActions);
 app.use('/api/branchAdmin', branchAdminActions);
 app.use('/api/report', reportRoutes);
 app.use('/api/stat', statRoutes);

@@ -18,7 +18,7 @@ router.post('/', auth, checkRole(['superAdmin']), async (req, res) => {
 
 // === READ ALL ===
 // ✅ superAdmin, branchAdmin ดูได้
-router.get('/', auth, checkRole(['superAdmin', 'branchAdmin']), async (req, res) => {
+router.get('/', auth, checkRole(['superAdmin']), async (req, res) => {
   try {
     const items = await Branch.find();
     res.json(items);
@@ -29,7 +29,7 @@ router.get('/', auth, checkRole(['superAdmin', 'branchAdmin']), async (req, res)
 
 // === READ ONE ===
 // ✅ superAdmin, branchAdmin
-router.get('/:id', auth, checkRole(['superAdmin', 'branchAdmin']), async (req, res) => {
+router.get('/:id', auth, checkRole(['superAdmin']), async (req, res) => {
   try {
     const item = await Branch.findById(req.params.id);
     if (!item) return res.status(404).json({ error: 'Not found' });
