@@ -16,7 +16,7 @@ const treatmentRoutes = require('./routes/treatmentRoutes');
 const medicineRoutes = require('./routes/medicineRoutes');
 const notificationRoutes = require('./routes/notificationRoutes');
 
-// ✅ ใช้งาน routes
+// ✅ ใช้งาน routes (ทั่วไป)
 app.use('/api/users', userRoutes);
 app.use('/api/branches', branchRoutes);
 app.use('/api/vaccinations', vaccinationRoutes);
@@ -24,17 +24,17 @@ app.use('/api/treatments', treatmentRoutes);
 app.use('/api/medicines', medicineRoutes);
 app.use('/api/notifications', notificationRoutes);
 
-//Nori pop up
+//Nori pop up (socket)
 const server = require('http').createServer(app);
-const io = require('socket.io')(server, { cors: { origin: '*' }});
+const io = require('socket.io')(server, { cors: { origin: '*' } });
 
-// inject io to requests
+// inject io to requests (ให้ controllers/route ใช้งานได้ผ่าน req.io)
 app.use((req, res, next) => {
   req.io = io;
   next();
 });
 
-//Nori
+// Nori API routes (อยู่หลังการ inject io)
 const branchAdminActions = require('./routes/noriApi/branchAdminActions');
 const reportRoutes = require('./routes/noriApi/report');
 const statRoutes = require('./routes/noriApi/statistics');
@@ -42,8 +42,8 @@ const notifyRoutes = require('./routes/noriApi/notify');
 
 
 
-// routes Nori
-app.use('/api/branchActions', branchAdminActions);
+// NOTE: เปลี่ยน mount เป็น /api/branchAdmin ให้ตรงกับชื่อไฟล์
+app.use('/api/branchAdmin', branchAdminActions);
 app.use('/api/report', reportRoutes);
 app.use('/api/stat', statRoutes);
 app.use('/api/notify', notifyRoutes);

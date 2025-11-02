@@ -25,12 +25,14 @@ module.exports.updateMedicine = async (req, res) => {
           message: `ยาเกือบหมด: ${updated.name}`,
           type: 'stock'
         });
+        console.log(`⚠️ ยาใกล้หมด: ${updated.name}`);
       }
 
-      req.io.emit('notification', {
-        message: `⚠️ ยาใกล้หมด: ${updated.name}`,
-        type: 'stock'
-      });
+
+      // req.io.emit('notification', {
+      //   message: `⚠️ ยาใกล้หมด: ${updated.name}`,
+      //   type: 'stock'
+      // });
     }
 
     res.json(updated);
