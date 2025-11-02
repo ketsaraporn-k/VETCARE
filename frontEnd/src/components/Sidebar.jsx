@@ -3,10 +3,23 @@ import React from "react";
 import { NavLink, useNavigate } from "react-router-dom";
 import "./Sidebar.css";
 
-const Sidebar = ({ onLogout }) => {
+const Sidebar = ({ user, onLogout }) => {
   const navigate = useNavigate();
 
-  const menuItems = [
+  // Do NOT read from localStorage — rely only on prop 'user'
+  // If user is not provided, show base menu only.
+  const getRolesFromUserProp = (u) => {
+    if (!u) return [];
+    // possible shapes: user.role (string) or user.roles (array)
+    const raw = u.role ?? u.roles ?? null;
+    if (!raw) return [];
+    if (Array.isArray(raw)) return raw.map(r => String(r).toLowerCase());
+    return [String(raw).toLowerCase()];
+  };
+
+  const roles = getRolesFromUserProp(user);
+
+  const baseMenu = [
     { name: "Dashboard", icon: "fa-solid fa-chart-line", path: "/" },
     { name: "Patients (Pets)", icon: "fa-solid fa-dog", path: "/pets" },
     { name: "Pet Detail (Demo)", icon: "fa-solid fa-id-badge", path: "/pet-detail/1" },
@@ -16,9 +29,31 @@ const Sidebar = ({ onLogout }) => {
     { name: "Cash Flow", icon: "fa-solid fa-money-bill", path: "/cash" },
   ];
 
+  const superAdminMenu = [
+    { name: "SuperAdmin Dashboard", icon: "fa-solid fa-shield-halved", path: "/superadmin" },
+    { name: "Manage All Branches", icon: "fa-solid fa-building", path: "/branches/manage" },
+    { name: "View Consolidated Data", icon: "fa-solid fa-layer-group", path: "/branches/overview" },
+    { name: "Move Customers & Staff", icon: "fa-solid fa-arrows-rotate", path: "/branches/transfer" },
+  ];
+
+  const branchAdminMenu = [
+    { name: "Branch Admin", icon: "fa-solid fa-screwdriver-wrench", path: "/admin" },
+    { name: "Request Transfer (staff/customer)", icon: "fa-solid fa-paper-plane", path: "/admin/transfer-request" },
+    { name: "Update Inventory", icon: "fa-solid fa-boxes-packing", path: "/admin/inventory/update" },
+    { name: "Stock Alerts & Appointments", icon: "fa-solid fa-bell", path: "/admin/alerts" },
+  ];
+
+  // Decide menu based only on roles derived from prop user
+  let menuItems = [...baseMenu];
+  if (roles.includes("superadmin")) {
+    menuItems = [...superAdminMenu, ...menuItems];
+  } else if (roles.includes("branchadmin")) {
+    menuItems = [...branchAdminMenu, ...menuItems];
+  }
+
   const handleLogoutClick = () => {
-    onLogout(); // เคลียร์ข้อมูล
-    navigate("/login"); // ✅ กลับหน้า login
+    if (onLogout) onLogout();
+    navigate("/login");
   };
 
   return (
@@ -32,13 +67,11 @@ const Sidebar = ({ onLogout }) => {
         <nav>
           {menuItems.map((item) => (
             <NavLink
-              key={item.name}
+              key={item.path}
               to={item.path}
-              className={({ isActive }) =>
-                isActive ? "menu-item active" : "menu-item"
-              }
+              className={({ isActive }) => (isActive ? "menu-item active" : "menu-item")}
             >
-              <i className={item.icon}></i>
+              <i className={item.icon} style={{ width: 20 }}></i>
               <span>{item.name}</span>
             </NavLink>
           ))}
@@ -48,11 +81,10 @@ const Sidebar = ({ onLogout }) => {
       <div className="sidebar-profile">
         <img src="/images/avatar.png" alt="avatar" />
         <div className="info">
-          <p>Pretty102</p>
-          <p>Clinic Owner</p>
+          <p>{user?.name || user?.username || "Pretty102"}</p>
+          <p>{roles.length ? roles.join(", ") : "User"}</p>
         </div>
 
-        {/* 🔽 Logout Button */}
         <button className="logout-btn" onClick={handleLogoutClick}>
           <i className="fa-solid fa-right-from-bracket"></i> Logout
         </button>

@@ -22,6 +22,8 @@ const MainLayout = ({ user, onLogout }) => {
     subtitle = "View and update your profile information";
   }
 
+  console.log("MainLayout user:", user);
+  
   return (
     <div className="main-layout">
       <Sidebar user={user} onLogout={onLogout} />
