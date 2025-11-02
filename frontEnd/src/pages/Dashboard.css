@@ -1,0 +1,23 @@
+/* src/pages/Dashboard.css */
+.dashboard-container {
+  display: flex;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+.dashboard-card {
+  background-color: #fff;
+  border-radius: 10px;
+  padding: 20px;
+  flex: 1 1 300px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.dashboard-card h3 {
+  margin-top: 0;
+  color: #333;
+}
+
+.dashboard-card p {
+  color: #666;
+}
