@@ -5,10 +5,15 @@ require('dotenv').config();
 require('./db');
 
 const app = express();
-app.use(cors());
+/* app.use(cors()); */
+app.use(cors({
+  origin: 'http://localhost:5173',
+  credentials: true
+}));
+
 app.use(express.json());
 
-// ✅ Import routes
+//  Import routes
 const userRoutes = require('./routes/userRoutes');
 const branchRoutes = require('./routes/branchRoutes');
 const vaccinationRoutes = require('./routes/vaccinationRoutes');
@@ -16,7 +21,7 @@ const treatmentRoutes = require('./routes/treatmentRoutes');
 const medicineRoutes = require('./routes/medicineRoutes');
 const notificationRoutes = require('./routes/notificationRoutes');
 
-// ✅ ใช้งาน routes (ทั่วไป)
+//  ใช้งาน routes
 app.use('/api/users', userRoutes);
 app.use('/api/branches', branchRoutes);
 app.use('/api/vaccinations', vaccinationRoutes);
@@ -60,6 +65,8 @@ app.use('/api/staff', treatmentManageRoutes);
 app.use('/api/staff/vaccinations', vaccinationManageRoutes); 
 app.use('/api/staff/schedules', scheduleManageRoutes);
 app.use('/api/staff-admin', clinicStaffManageRoutes);
+
+
 
 
 const PORT = process.env.PORT || 3000;
