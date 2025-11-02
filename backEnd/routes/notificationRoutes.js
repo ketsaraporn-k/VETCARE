@@ -11,7 +11,7 @@ router.put('/:id/read', auth, controller.markRead);
 // === CREATE ===
 router.post('/', async (req, res) => {
   try {
-    const item = await Model.create(req.body);
+    const item = await Notification.create(req.body);
     res.status(201).json(item);
   } catch (err) {
     res.status(400).json({ error: err.message });
@@ -21,7 +21,7 @@ router.post('/', async (req, res) => {
 // // === CREATE ===
 // router.post('/', async (req, res) => {
 //   try {
-//     const item = await Model.create(req.body);
+//     const item = await Notification.create(req.body);
 //     res.status(201).json(item);
 //   } catch (err) {
 //     res.status(400).json({ error: err.message });
@@ -31,7 +31,7 @@ router.post('/', async (req, res) => {
 // === READ ALL ===
 router.get('/', async (req, res) => {
   try {
-    const items = await Model.find();
+    const items = await Notification.find();
     res.json(items);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -41,7 +41,7 @@ router.get('/', async (req, res) => {
 // === READ ONE ===
 router.get('/:id', async (req, res) => {
   try {
-    const item = await Model.findById(req.params.id);
+    const item = await Notification.findById(req.params.id);
     if (!item) return res.status(404).json({ error: 'Not found' });
     res.json(item);
   } catch (err) {
@@ -52,7 +52,7 @@ router.get('/:id', async (req, res) => {
 // === UPDATE ===
 router.put('/:id', async (req, res) => {
   try {
-    const item = await Model.findByIdAndUpdate(req.params.id, req.body, { new: true });
+    const item = await Notification.findByIdAndUpdate(req.params.id, req.body, { new: true });
     if (!item) return res.status(404).json({ error: 'Not found' });
     res.json(item);
   } catch (err) {
@@ -63,7 +63,7 @@ router.put('/:id', async (req, res) => {
 // === DELETE ===
 router.delete('/:id', async (req, res) => {
   try {
-    const item = await Model.findByIdAndDelete(req.params.id);
+    const item = await Notification.findByIdAndDelete(req.params.id);
     if (!item) return res.status(404).json({ error: 'Not found' });
     res.json({ message: 'Deleted successfully' });
   } catch (err) {
