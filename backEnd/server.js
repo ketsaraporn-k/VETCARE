@@ -28,7 +28,6 @@ app.use('/api/notifications', notificationRoutes);
 
 
 //Nori
-const branch = require('./routes/noriApi/branch');
 const reportRoutes = require('./routes/noriApi/report');
 const statRoutes = require('./routes/noriApi/statistics');
 const notifyRoutes = require('./routes/noriApi/notify');
@@ -44,7 +43,6 @@ app.use((req, res, next) => {
 });
 
 // routes Nori
-app.use('/api/branches2', branch);
 app.use('/api/report', reportRoutes);
 app.use('/api/stat', statRoutes);
 app.use('/api/notify', notifyRoutes);
