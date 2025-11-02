@@ -1,35 +1,57 @@
-import React, { useState } from "react";
-import Auth from "./components/Auth.jsx";
-import Dashboard from "./components/Dashboard.jsx";
-import Profile from "./components/Profile.jsx";
-import Pets from "./components/Pets.jsx";
-import "./App.css";
+// src/App.jsx
+import React, { useState, useEffect } from "react";
+import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+
+// Pages
+import Dashboard from "./pages/Dashboard";
+import Pets from "./pages/Pets";
+import PetDetail from "./pages/PetDetail";
+import Profile from "./pages/Profile";
+import Auth from "./components/Auth"; // ✅ ใช้ Auth ของคุณ
+
+// Layout
+import MainLayout from "./layout/MainLayout";
 
 function App() {
   const [user, setUser] = useState(null);
 
-  // ✅ ฟังก์ชันนี้จะถูกส่งไปให้ Auth.jsx เรียกเมื่อ login สำเร็จ
+  // ✅ เมื่อ Login สำเร็จ → เก็บ user ไว้ใน state
   const handleLogin = (userData) => {
     console.log("✅ Logged in:", userData);
     setUser(userData);
+    localStorage.setItem("user", JSON.stringify(userData));
   };
 
-  // ถ้ายังไม่ล็อกอิน → แสดงหน้า Login
+  // ✅ ฟังก์ชัน Logout
+  const handleLogout = () => {
+    localStorage.removeItem("token");
+    localStorage.removeItem("user");
+    setUser(null);
+  };
+
+  // ✅ โหลดข้อมูลผู้ใช้จาก localStorage (กันรีเฟรชแล้วหลุด)
+  useEffect(() => {
+    const storedUser = localStorage.getItem("user");
+    if (storedUser) setUser(JSON.parse(storedUser));
+  }, []);
+
+  // 🔒 ถ้ายังไม่ล็อกอิน → ไปหน้า Login
   if (!user) {
     return <Auth onLogin={handleLogin} />;
   }
 
-  // ถ้าเป็น Admin หรือ Staff → เข้าหน้า Dashboard
-  if (user.role === "admin" || user.role === "staff") {
-    return <Dashboard user={user} />;
-  }
-
-  // ถ้าเป็นเจ้าของสัตว์ (owner) → เข้าหน้า Profile/Pets
+  // ✅ ส่วนหลักหลังล็อกอิน
   return (
-    <div>
-      <Profile user={user} />
-      <Pets user={user} />
-    </div>
+    <Router>
+      <MainLayout user={user} onLogout={handleLogout}>
+        <Routes>
+          <Route path="/" element={<Dashboard user={user} />} />
+          <Route path="/pets" element={<Pets user={user} />} />
+          <Route path="/pet-detail/:id" element={<PetDetail user={user} />} />
+          <Route path="/profile" element={<Profile user={user} />} />
+        </Routes>
+      </MainLayout>
+    </Router>
   );
 }
 

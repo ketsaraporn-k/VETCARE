@@ -1,4 +1,4 @@
-// auth.js
+// middleware/auth.js ตรวจสอบ JWT และ attach user object จาก DB
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 

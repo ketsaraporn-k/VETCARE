@@ -1,0 +1,10 @@
+.pet-detail-container {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.loading-text {
+  color: #666;
+  font-style: italic;
+}

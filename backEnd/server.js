@@ -13,7 +13,7 @@ app.use(cors({
 
 app.use(express.json());
 
-// ✅ Import routes
+//  Import routes
 const userRoutes = require('./routes/userRoutes');
 const branchRoutes = require('./routes/branchRoutes');
 const petRoutes = require('./routes/petRoutes');
@@ -22,7 +22,7 @@ const treatmentRoutes = require('./routes/treatmentRoutes');
 const medicineRoutes = require('./routes/medicineRoutes');
 const notificationRoutes = require('./routes/notificationRoutes');
 
-// ✅ ใช้งาน routes
+//  ใช้งาน routes
 app.use('/api/users', userRoutes);
 app.use('/api/branches', branchRoutes);
 app.use('/api/pets', petRoutes);
@@ -67,6 +67,8 @@ app.use('/api/staff', treatmentManageRoutes);
 app.use('/api/staff/vaccinations', vaccinationManageRoutes); 
 app.use('/api/staff/schedules', scheduleManageRoutes);
 app.use('/api/staff-admin', clinicStaffManageRoutes);
+
+
 
 
 const PORT = process.env.PORT || 3000;

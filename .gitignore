@@ -3,7 +3,7 @@ backEnd/node_modules/
 frontend/node_modules/
 
 # ไม่อัปโหลดไฟล์ environment
-.env
+#.env
 
 # ไม่อัปโหลดไฟล์ชั่วคราวหรือระบบ
 *.log

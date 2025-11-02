@@ -1,5 +1,7 @@
 // src/components/Auth.jsx
 import React, { useState } from "react";
+import "./Auth.css";
+
 
 export default function Auth({ onLogin }) {
   const [username, setUsername] = useState("");
