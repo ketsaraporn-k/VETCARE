@@ -1,0 +1,11 @@
+/* src/pages/admin/Admin.css */
+.admin-page { max-width: 1100px; margin: 0 auto; }
+.card { background:#fff; padding:12px; border-radius:8px; box-shadow: 0 6px 20px rgba(0,0,0,0.04); }
+.mini-table { width:100%; border-collapse: collapse; }
+.mini-table th, .mini-table td { padding: 10px 8px; border-bottom: 1px solid #f2f2f2; text-align: left; vertical-align: middle; }
+.mini-table th { background:#fafafa; font-weight:700; color:#222; }
+.modal-backdrop { position:fixed; inset:0; background: rgba(0,0,0,0.35); display:flex; align-items:center; justify-content:center; z-index:9999; }
+.modal-card { width:720px; max-height:80vh; overflow:auto; background:#fff; padding:16px; border-radius:8px; box-shadow: 0 12px 40px rgba(0,0,0,0.25); }
+.toast { position: fixed; right: 20px; bottom: 20px; padding: 10px 14px; border-radius: 8px; color: white; z-index: 10000; }
+.toast-ok { background: #2b8; color: #012; }
+.toast-error { background: #d9534f; }

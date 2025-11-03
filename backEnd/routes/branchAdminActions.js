@@ -95,10 +95,18 @@ router.post('/moveRequest', auth, role(['branchAdmin']), async (req, res) => {
     });
 
     await mv.save();
+    // after saving mv
+    await Notification.create({
+      userId: someUserId, // e.g. superAdmin(s) or requester
+      type: 'move_request',
+      message: `New move request from ${req.user.username} for ${subjectUser.username}`,
+      targetId: mv._id,
+      metadata: { subjectUserId: subjectUserId }
+    });
     const populated = await MoveRequest.findById(mv._id).populate('requesterId subjectUserId fromBranch toBranch');
     await populateHistoryUsers([populated]);
 
-    try { if (req.io) req.io.emit('moveRequestCreated', { moveRequest: populated }); } catch(e){}
+    try { if (req.io) req.io.emit('moveRequestCreated', { moveRequest: populated }); } catch (e) { }
 
     return res.status(201).json({ message: 'Move request created', moveRequest: populated });
   } catch (err) {
@@ -162,7 +170,7 @@ router.put('/moveRequest/approve/:id', auth, role(['superAdmin']), async (req, r
     const populated = await MoveRequest.findById(mv._id).populate('requesterId subjectUserId fromBranch toBranch');
     await populateHistoryUsers([populated]);
 
-    try { if (req.io) req.io.emit('moveRequestApproved', { moveRequest: populated, updatedUser }); } catch(e){}
+    try { if (req.io) req.io.emit('moveRequestApproved', { moveRequest: populated, updatedUser }); } catch (e) { }
 
     return res.json({ message: 'Move request approved and user moved', moveRequest: populated, updatedUser });
   } catch (err) {
@@ -189,7 +197,7 @@ router.put('/moveRequest/reject/:id', auth, role(['superAdmin']), async (req, re
     const populated = await MoveRequest.findById(mv._id).populate('requesterId subjectUserId fromBranch toBranch');
     await populateHistoryUsers([populated]);
 
-    try { if (req.io) req.io.emit('moveRequestRejected', { moveRequest: populated }); } catch(e){}
+    try { if (req.io) req.io.emit('moveRequestRejected', { moveRequest: populated }); } catch (e) { }
 
     return res.json({ message: 'Move request rejected', moveRequest: populated });
   } catch (err) {
@@ -230,7 +238,7 @@ router.put('/moveRequest/cancel/:id', auth, role(['branchAdmin', 'superAdmin']),
     const populated = await MoveRequest.findById(updated._id).populate('requesterId subjectUserId fromBranch toBranch');
     await populateHistoryUsers([populated]);
 
-    try { if (req.io) req.io.emit('moveRequestCancelled', { moveRequest: populated }); } catch(e){}
+    try { if (req.io) req.io.emit('moveRequestCancelled', { moveRequest: populated }); } catch (e) { }
 
     return res.json({ message: 'Move request cancelled', moveRequest: populated });
   } catch (err) {
@@ -262,7 +270,7 @@ router.put('/moveUser/:userId', auth, role(['superAdmin']), async (req, res) => 
       console.warn('Warning: failed to update pending requests after direct move', e);
     }
 
-    try { if (req.io) req.io.emit('userMoved', { userId: updated._id, newBranch: targetBranch }); } catch(e){}
+    try { if (req.io) req.io.emit('userMoved', { userId: updated._id, newBranch: targetBranch }); } catch (e) { }
 
     return res.json({ message: 'User moved successfully', updated });
   } catch (err) {

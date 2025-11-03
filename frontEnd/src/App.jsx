@@ -19,8 +19,9 @@ import MoveRequestHistory from "./pages/MoveRequestHistory";
 
 // Admin pages
 import AdminDashboard from "./pages/admin/Dashboard";
-import InventoryUpdate from "./pages/admin/InventoryUpdate";
-import StockAlerts from "./pages/admin/StockAlerts";
+import AdminAlerts from "./pages/admin/Alerts";
+import AdminInventoryUpdate from "./pages/admin/InventoryUpdate";
+
 
 // Layout
 import MainLayout from "./layout/MainLayout";
@@ -66,10 +67,10 @@ function App() {
 
               {/* admin area */}
               <Route path="admin/dashboard" element={<AdminDashboard user={user} />} />
-              <Route path="admin/inventory-update" element={<InventoryUpdate user={user} />} />
-              <Route path="admin/stock-alerts" element={<StockAlerts user={user} />} />
+              <Route path="admin/alerts" element={<AdminAlerts user={user} />} />
+              <Route path="admin/inventory/update" element={<AdminInventoryUpdate user={user} />} />
               <Route path="branches/history" element={<MoveRequestHistory user={user} />} />
-              
+
 
 
               {/* branches area */}

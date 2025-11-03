@@ -40,8 +40,9 @@ const Sidebar = ({ user, onLogout }) => {
     { name: "Request Transfer (staff/customer)", icon: "fa-solid fa-paper-plane", path: "/branches/transfer-request" },
     { name: "View Move Requests", icon: "fa-solid fa-list", path: "/branches/move-requests" },
     { name: "Move Request History", icon: "fa-solid fa-clock-rotate-left", path: "/branches/history" },
-    { name: "Update Inventory", icon: "fa-solid fa-boxes-packing", path: "/admin/inventory/update" },
     { name: "Stock Alerts & Appointments", icon: "fa-solid fa-bell", path: "/admin/alerts" },
+    { name: "Update Inventory (Admin)", icon: "fa-solid fa-boxes-packing", path: "/admin/inventory/update" },
+
   ];
 
   let menuItems = [...baseMenu];
