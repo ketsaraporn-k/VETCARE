@@ -1,0 +1,120 @@
+.mr-page {
+  padding: 16px;
+  font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+  color: #111827;
+}
+.mr-title {
+  font-size: 22px;
+  margin-bottom: 8px;
+}
+.mr-loading {
+  padding: 12px;
+}
+.mr-error {
+  background: #fff4f4;
+  color: #991b1b;
+  padding: 10px;
+  border-radius: 8px;
+  margin-bottom: 12px;
+}
+.mr-table-wrap {
+  overflow-x: auto;
+  background: #fff;
+  border-radius: 8px;
+  padding: 8px;
+  box-shadow: 0 1px 0 rgba(0,0,0,0.03);
+}
+.mr-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.mr-table thead th {
+  text-align: left;
+  padding: 10px;
+  background: #fafafa;
+  font-weight: 600;
+  border-bottom: 1px solid #eee;
+}
+.mr-table tbody td {
+  padding: 10px;
+  border-bottom: 1px solid #f3f3f3;
+  vertical-align: middle;
+}
+.mr-reason {
+  max-width: 260px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: #374151;
+}
+
+/* actions/buttons */
+.mr-actions {
+  display: flex;
+  gap: 8px;
+}
+.mr-btn {
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid rgba(0,0,0,0.06);
+  background: #fff;
+  cursor: pointer;
+  font-weight: 600;
+}
+.mr-btn-approve {
+  background: #10b981;
+  color: white;
+  border: none;
+}
+.mr-btn-reject {
+  background: #ef4444;
+  color: white;
+  border: none;
+}
+.mr-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+.mr-processed {
+  color: #6b7280;
+}
+
+/* Modal */
+.mr-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.35);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 3000;
+}
+.mr-modal {
+  width: 520px;
+  background: #fff;
+  border-radius: 10px;
+  padding: 18px;
+  box-shadow: 0 10px 40px rgba(2,6,23,0.2);
+}
+.mr-modal h3 {
+  margin-top: 0;
+}
+.mr-modal-sub {
+  margin-top: 4px;
+  margin-bottom: 8px;
+  color: #6b7280;
+}
+.mr-textarea {
+  width: 100%;
+  padding: 8px;
+  border-radius: 8px;
+  border: 1px solid #e5e7eb;
+  resize: vertical;
+  font-size: 14px;
+}
+.mr-modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 12px;
+}

@@ -1,0 +1,5 @@
+.mrq-page { padding: 16px; max-width: 900px; }
+.mrq-form label { display:block; margin-bottom:12px; }
+.mrq-select, .mrq-textarea { width:100%; padding:10px; border-radius:6px; }
+.mrq-actions { margin-top:12px; }
+.mrq-btn { padding:10px 18px; border-radius:8px; background:#4b5563; color:#fff; border:none; cursor:pointer; }

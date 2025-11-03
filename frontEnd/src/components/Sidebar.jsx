@@ -6,11 +6,8 @@ import "./Sidebar.css";
 const Sidebar = ({ user, onLogout }) => {
   const navigate = useNavigate();
 
-  // Do NOT read from localStorage — rely only on prop 'user'
-  // If user is not provided, show base menu only.
   const getRolesFromUserProp = (u) => {
     if (!u) return [];
-    // possible shapes: user.role (string) or user.roles (array)
     const raw = u.role ?? u.roles ?? null;
     if (!raw) return [];
     if (Array.isArray(raw)) return raw.map(r => String(r).toLowerCase());
@@ -34,16 +31,19 @@ const Sidebar = ({ user, onLogout }) => {
     { name: "Manage All Branches", icon: "fa-solid fa-building", path: "/branches/manage" },
     { name: "View Consolidated Data", icon: "fa-solid fa-layer-group", path: "/branches/overview" },
     { name: "Move Customers & Staff", icon: "fa-solid fa-arrows-rotate", path: "/branches/transfer" },
+    { name: "Move Requests", icon: "fa-solid fa-list", path: "/branches/move-requests" },
   ];
 
   const branchAdminMenu = [
     { name: "Branch Admin", icon: "fa-solid fa-screwdriver-wrench", path: "/admin" },
-    { name: "Request Transfer (staff/customer)", icon: "fa-solid fa-paper-plane", path: "/admin/transfer-request" },
+    // keep only one transfer-request link (remove duplicate)
+    { name: "Request Transfer (staff/customer)", icon: "fa-solid fa-paper-plane", path: "/branches/transfer-request" },
+    { name: "View Move Requests", icon: "fa-solid fa-list", path: "/branches/move-requests" },
+    { name: "Move Request History", icon: "fa-solid fa-clock-rotate-left", path: "/branches/history" },
     { name: "Update Inventory", icon: "fa-solid fa-boxes-packing", path: "/admin/inventory/update" },
     { name: "Stock Alerts & Appointments", icon: "fa-solid fa-bell", path: "/admin/alerts" },
   ];
 
-  // Decide menu based only on roles derived from prop user
   let menuItems = [...baseMenu];
   if (roles.includes("superadmin")) {
     menuItems = [...superAdminMenu, ...menuItems];

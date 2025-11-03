@@ -3,25 +3,31 @@ import React, { useEffect, useState } from "react";
 import api from "../api/axiosConfig";
 
 /*
-  MoveRequestsList
-  - ดึงรายการคำขอย้ายจาก backend: GET /api/branchAdmin/moveRequests
-  - SuperAdmin สามารถ Approve -> PUT /api/branchAdmin/moveRequest/approve/:id
-  - SuperAdmin สามารถ Reject  -> PUT /api/branchAdmin/moveRequest/reject/:id (ส่ง { reason })
-  - BranchAdmin จะเห็นคำขอของสาขาตัวเอง (backend filter)
+  MoveRequestsList (updated)
+  - GET /branchAdmin/moveRequests
+  - Approve: PUT /branchAdmin/moveRequest/approve/:id (superAdmin)
+  - Reject:  PUT /branchAdmin/moveRequest/reject/:id  (superAdmin)
+  - Cancel:  PUT /branchAdmin/moveRequest/cancel/:id  (requester OR superAdmin)  <-- changed
 */
 
-const MoveRequestsList = () => {
+const MoveRequestsList = ({ user: propUser }) => {
+  const stored = typeof window !== "undefined" ? localStorage.getItem("user") : null;
+  const parsed = stored ? JSON.parse(stored) : null;
+  const currentUser = propUser || parsed || {};
+
   const [requests, setRequests] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [processingId, setProcessingId] = useState(null); // id ที่กำลัง approve/reject
+  const [processingId, setProcessingId] = useState(null);
+
+  const isSuper = (currentUser.role || "").toString().toLowerCase() === "superadmin";
+  const isBranchAdmin = (currentUser.role || "").toString().toLowerCase() === "branchadmin";
 
   const fetchRequests = async () => {
     setLoading(true);
     setError(null);
     try {
       const res = await api.get("/branchAdmin/moveRequests");
-      // backend คืน { moveRequests: [...] } หรือ [...]
       const data = res.data?.moveRequests || res.data || [];
       setRequests(data);
     } catch (err) {
@@ -42,7 +48,6 @@ const MoveRequestsList = () => {
     try {
       setProcessingId(id);
       await api.put(`/branchAdmin/moveRequest/approve/${id}`);
-      // refresh
       await fetchRequests();
       alert("Approved.");
     } catch (err) {
@@ -55,7 +60,7 @@ const MoveRequestsList = () => {
 
   const handleReject = async (id) => {
     const reason = prompt("Rejection reason (optional):", "");
-    if (reason === null) return; // user cancelled
+    if (reason === null) return; // cancelled
     try {
       setProcessingId(id);
       await api.put(`/branchAdmin/moveRequest/reject/${id}`, { reason });
@@ -64,6 +69,25 @@ const MoveRequestsList = () => {
     } catch (err) {
       console.error("reject err:", err);
       alert(err.response?.data?.error || "Reject failed");
+    } finally {
+      setProcessingId(null);
+    }
+  };
+
+  // UPDATED: call PUT /moveRequest/cancel/:id with optional reason
+  const handleCancel = async (id) => {
+    const reason = prompt("Cancellation reason (optional):", "");
+    if (reason === null) return; // user cancelled prompt
+    if (!confirm("Cancel (mark as cancelled) this move request?")) return;
+
+    try {
+      setProcessingId(id);
+      await api.put(`/branchAdmin/moveRequest/cancel/${id}`, { reason });
+      await fetchRequests();
+      alert("Cancelled.");
+    } catch (err) {
+      console.error("cancel err:", err);
+      alert(err.response?.data?.error || "Cancel failed");
     } finally {
       setProcessingId(null);
     }
@@ -101,47 +125,65 @@ const MoveRequestsList = () => {
               </tr>
             </thead>
             <tbody>
-              {requests.map((r) => (
-                <tr key={r._id || r.id} style={{ borderBottom: "1px solid #eee" }}>
-                  <td style={tdStyle}>
-                    {r.requesterId?.username || r.requesterId?.name || (r.requesterId?._id ? `id:${r.requesterId._id}` : "-")}
-                  </td>
-                  <td style={tdStyle}>
-                    {r.subjectUserId?.username || r.subjectUserId?.name || (r.subjectUserId?._id ? `id:${r.subjectUserId._id}` : "-")}
-                  </td>
-                  <td style={tdStyle}>
-                    {r.fromBranch?.branchName || r.fromBranch || "-"}
-                  </td>
-                  <td style={tdStyle}>
-                    {r.toBranch?.branchName || r.toBranch || "-"}
-                  </td>
-                  <td style={tdStyle}>{r.reason || "-"}</td>
-                  <td style={tdStyle}>{r.status}</td>
-                  <td style={tdStyle}>{r.createdAt ? new Date(r.createdAt).toLocaleString() : "-"}</td>
-                  <td style={tdStyle}>
-                    {r.status === "pending" ? (
-                      <>
-                        <button
-                          onClick={() => handleApprove(r._id || r.id)}
-                          disabled={processingId === (r._id || r.id)}
-                          style={{ marginRight: 8 }}
-                        >
-                          {processingId === (r._id || r.id) ? "Processing..." : "Approve"}
-                        </button>
+              {requests.map((r) => {
+                const id = r._id || r.id;
+                const isPending = r.status === "pending";
+                const isRequester = (r.requesterId && (r.requesterId._id || r.requesterId) && String((r.requesterId._id || r.requesterId)) === String(currentUser._id || currentUser.id));
 
-                        <button
-                          onClick={() => handleReject(r._id || r.id)}
-                          disabled={processingId === (r._id || r.id)}
-                        >
-                          {processingId === (r._id || r.id) ? "Processing..." : "Reject"}
-                        </button>
-                      </>
-                    ) : (
-                      <span style={{ color: "#666" }}>Processed</span>
-                    )}
-                  </td>
-                </tr>
-              ))}
+                return (
+                  <tr key={id} style={{ borderBottom: "1px solid #eee" }}>
+                    <td style={tdStyle}>
+                      {r.requesterId?.username || r.requesterId?.name || (r.requesterId?._id ? `id:${r.requesterId._id}` : "-")}
+                    </td>
+                    <td style={tdStyle}>
+                      {r.subjectUserId?.username || r.subjectUserId?.name || (r.subjectUserId?._id ? `id:${r.subjectUserId._id}` : "-")}
+                    </td>
+                    <td style={tdStyle}>{r.fromBranch?.branchName || r.fromBranch || "-"}</td>
+                    <td style={tdStyle}>{r.toBranch?.branchName || r.toBranch || "-"}</td>
+                    <td style={tdStyle}>{r.reason || "-"}</td>
+                    <td style={tdStyle}>{r.status}</td>
+                    <td style={tdStyle}>{r.createdAt ? new Date(r.createdAt).toLocaleString() : "-"}</td>
+                    <td style={tdStyle}>
+                      {isPending ? (
+                        isSuper ? (
+                          <>
+                            <button
+                              onClick={() => handleApprove(id)}
+                              disabled={processingId === id}
+                              style={{ marginRight: 8, background: "#10b981", color: "#fff", border: "none", padding: "8px 12px", borderRadius: 8 }}
+                            >
+                              {processingId === id ? "Processing..." : "Approve"}
+                            </button>
+
+                            <button
+                              onClick={() => handleReject(id)}
+                              disabled={processingId === id}
+                              style={{ background: "#ef4444", color: "#fff", border: "none", padding: "8px 12px", borderRadius: 8 }}
+                            >
+                              {processingId === id ? "Processing..." : "Reject"}
+                            </button>
+                          </>
+                        ) : (
+                          // not super: only allow requester to cancel pending
+                          isRequester ? (
+                            <button
+                              onClick={() => handleCancel(id)}
+                              disabled={processingId === id}
+                              style={{ background: "#f59e0b", color: "#fff", border: "none", padding: "8px 12px", borderRadius: 8 }}
+                            >
+                              {processingId === id ? "Processing..." : "Cancel"}
+                            </button>
+                          ) : (
+                            <span style={{ color: "#666" }}>Pending</span>
+                          )
+                        )
+                      ) : (
+                        <span style={{ color: "#666" }}>Processed</span>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>

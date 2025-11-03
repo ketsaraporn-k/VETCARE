@@ -1,15 +1,12 @@
-// src/App.jsx
 import React, { useState, useEffect } from "react";
 import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 
-// Pages
+// Pages...
 import Dashboard from "./pages/Dashboard";
 import Pets from "./pages/Pets";
 import PetDetail from "./pages/PetDetail";
 import Profile from "./pages/Profile";
 import Auth from "./components/Auth";
-
-// Additional pages (placeholders / real files)
 import Appointments from "./pages/Appointments";
 import Inventory from "./pages/Inventory";
 import CashFlow from "./pages/CashFlow";
@@ -18,9 +15,9 @@ import BranchManage from "./pages/BranchManage";
 import MoveRequest from "./pages/MoveRequest";
 import MoveRequestsList from "./pages/MoveRequestsList";
 import BranchTransfer from "./pages/BranchTransfer";
+import MoveRequestHistory from "./pages/MoveRequestHistory";
 
-
-// Admin pages (placeholders)
+// Admin pages
 import AdminDashboard from "./pages/admin/Dashboard";
 import InventoryUpdate from "./pages/admin/InventoryUpdate";
 import StockAlerts from "./pages/admin/StockAlerts";
@@ -32,7 +29,6 @@ function App() {
   const [user, setUser] = useState(null);
 
   const handleLogin = (userData) => {
-    console.log("✅ Logged in:", userData);
     setUser(userData);
     localStorage.setItem("user", JSON.stringify(userData));
   };
@@ -68,17 +64,19 @@ function App() {
               <Route path="cash" element={<CashFlow user={user} />} />
               <Route path="superadmin" element={<SuperAdmin user={user} />} />
 
-              {/* admin nested or separate routes */}
+              {/* admin area */}
               <Route path="admin/dashboard" element={<AdminDashboard user={user} />} />
               <Route path="admin/inventory-update" element={<InventoryUpdate user={user} />} />
               <Route path="admin/stock-alerts" element={<StockAlerts user={user} />} />
-              <Route path="branches/manage" element={<BranchManage user={user} />} />
+              <Route path="branches/history" element={<MoveRequestHistory user={user} />} />
+              
 
-              {/* inside <Routes> protected area: */}
-                <Route path="branches/manage" element={<BranchManage user={user} />} />
-                <Route path="branches/transfer-request" element={<MoveRequest user={user} />} />
-                <Route path="branches/move-requests" element={<MoveRequestsList user={user} />} />
-                <Route path="branches/transfer" element={<BranchTransfer user={user} />} />
+
+              {/* branches area */}
+              <Route path="branches/manage" element={<BranchManage user={user} />} />
+              <Route path="branches/transfer-request" element={<MoveRequest user={user} />} />
+              <Route path="branches/move-requests" element={<MoveRequestsList user={user} />} />
+              <Route path="branches/transfer" element={<BranchTransfer user={user} />} />
             </Route>
 
             <Route path="/login" element={<Navigate to="/" replace />} />
