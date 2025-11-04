@@ -1,3 +1,4 @@
+// src/App.jsx
 import React, { useState, useEffect } from "react";
 import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 
@@ -21,6 +22,12 @@ import MoveRequestHistory from "./pages/MoveRequestHistory";
 import AdminDashboard from "./pages/admin/Dashboard";
 import AdminAlerts from "./pages/admin/Alerts";
 import AdminInventoryUpdate from "./pages/admin/InventoryUpdate";
+
+// Owner pages
+import OwnerDashboard from "./pages/OwnerPet/OwnerDashboard";
+import OwnerPetDetail from "./pages/OwnerPet/OwnerPetDetail";
+import OwnerProfile from "./pages/OwnerPet/OwnerProfile";
+
 
 
 // Layout
@@ -78,6 +85,13 @@ function App() {
               <Route path="branches/transfer-request" element={<MoveRequest user={user} />} />
               <Route path="branches/move-requests" element={<MoveRequestsList user={user} />} />
               <Route path="branches/transfer" element={<BranchTransfer user={user} />} />
+
+
+              {/* owner area */}
+              <Route path="owner/dashboard" element={<OwnerDashboard user={user} />} />
+              <Route path="owner/pet/:id" element={<OwnerPetDetail user={user} />} />
+              <Route path="owner/profile" element={<OwnerProfile user={user} />} />
+
             </Route>
 
             <Route path="/login" element={<Navigate to="/" replace />} />

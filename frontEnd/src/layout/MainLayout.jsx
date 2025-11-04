@@ -1,3 +1,4 @@
+// src/layout/MainLayout.jsx
 import React from "react";
 import { useLocation, Outlet } from "react-router-dom";
 import Sidebar from "../components/Sidebar";
@@ -20,7 +21,16 @@ const MainLayout = ({ user, onLogout }) => {
   } else if (path.startsWith("/profile")) {
     title = "Profile";
     subtitle = "View and update your profile information";
-  }
+  } else if (path.startsWith("/owner/dashboard")) {
+  title = "My Pets";
+  subtitle = "View all your pets and their medical history";
+} else if (path.startsWith("/owner/pet")) {
+  title = "Pet Medical History";
+  subtitle = "Check your pet’s medical record";
+} else if (path.startsWith("/owner/profile")) {
+  title = "My Profile";
+  subtitle = "Manage your personal information";
+}
 
   return (
     <div className="main-layout">

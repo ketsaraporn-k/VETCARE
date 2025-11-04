@@ -45,11 +45,24 @@ const Sidebar = ({ user, onLogout }) => {
 
   ];
 
+  /* owner */
+  const ownerMenu = [
+  { name: "My Pets", icon: "fa-solid fa-paw", path: "/frontEnd/src/pages/OwnerPet/OwnerPets" },
+  { name: "My Profile", icon: "fa-regular fa-user", path: "/frontEnd/src/pages/OwnerPet/OwnerProfile" },
+
+];
+
   let menuItems = [...baseMenu];
   if (roles.includes("superadmin")) {
     menuItems = [...superAdminMenu, ...menuItems];
   } else if (roles.includes("branchadmin")) {
     menuItems = [...branchAdminMenu, ...menuItems];
+  }  else if (roles.includes("owner")) {
+    // owner จะเห็นเฉพาะของตัวเองเท่านั้น
+    menuItems = [...ownerMenu];
+  } else {
+    // ถ้าไม่ใช่ role พิเศษใด ๆ (เช่น staff)
+    menuItems = [...baseMenu];
   }
 
   const handleLogoutClick = () => {
@@ -82,8 +95,8 @@ const Sidebar = ({ user, onLogout }) => {
       <div className="sidebar-profile">
         <img src="/images/avatar.png" alt="avatar" />
         <div className="info">
-          <p>{user?.name || user?.username || "Pretty102"}</p>
-          <p>{roles.length ? roles.join(", ") : "User"}</p>
+          <div className="user-name">{user.name}</div>
+          <div className="user-role">{user.role}</div>
         </div>
 
         <button className="logout-btn" onClick={handleLogoutClick}>
