@@ -1,4 +1,4 @@
-// npm install multer for upload image
+// npm install multer for upload imageOwnerprofile
 /* server.js */
 const express = require('express');
 const cors = require('cors');
