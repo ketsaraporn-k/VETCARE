@@ -84,10 +84,7 @@ const Sidebar = ({ user, onLogout }) => {
   } else if (roles.includes("owner")) {
     // 👇 owner จะเห็นเฉพาะของตัวเองเท่านั้น
     menuItems = [...ownerMenu];
-  } else {
-    // ถ้าไม่ใช่ role พิเศษใด ๆ (เช่น staff)
-    menuItems = [...baseMenu];
-  }
+  } 
 
   // 🧭 Logout
   const handleLogoutClick = () => {
