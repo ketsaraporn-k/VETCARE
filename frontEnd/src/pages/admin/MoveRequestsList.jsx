@@ -1,6 +1,6 @@
 // src/pages/MoveRequestsList.jsx
 import React, { useEffect, useState } from "react";
-import api from "../api/axiosConfig";
+import api from "../../api/axiosConfig";
 
 /*
   MoveRequestsList (updated)

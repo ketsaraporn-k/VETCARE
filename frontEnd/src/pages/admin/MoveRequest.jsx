@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import api from "../api/axiosConfig";
+import api from "../../api/axiosConfig";
 import "./MoveRequest.css"; // ถ้ามี CSS แยก
 
 const MoveRequest = () => {

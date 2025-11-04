@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import api from "../api/axiosConfig";
+import api from "../../api/axiosConfig";
 import "./BranchTransfer.css";
 
 const BranchTransfer = ({ user: propUser }) => {

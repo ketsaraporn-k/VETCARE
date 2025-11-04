@@ -1,6 +1,6 @@
 // src/pages/MoveRequestHistory.jsx
 import React, { useEffect, useState } from "react";
-import api from "../api/axiosConfig";
+import api from "../../api/axiosConfig";
 
 const MoveRequestHistory = () => {
     const [items, setItems] = useState([]);

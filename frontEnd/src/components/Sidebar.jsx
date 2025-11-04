@@ -6,6 +6,7 @@ import "./Sidebar.css";
 const Sidebar = ({ user, onLogout }) => {
   const navigate = useNavigate();
 
+  // ✅ ดึง role จาก user
   const getRolesFromUserProp = (u) => {
     if (!u) return [];
     const raw = u.role ?? u.roles ?? null;
@@ -16,6 +17,7 @@ const Sidebar = ({ user, onLogout }) => {
 
   const roles = getRolesFromUserProp(user);
 
+  // 🐾 เมนูพื้นฐาน (ทุกคนเห็น)
   const baseMenu = [
     { name: "Dashboard", icon: "fa-solid fa-chart-line", path: "/" },
     { name: "Patients (Pets)", icon: "fa-solid fa-dog", path: "/pets" },
@@ -23,53 +25,77 @@ const Sidebar = ({ user, onLogout }) => {
     { name: "Profile", icon: "fa-regular fa-user", path: "/profile" },
     { name: "Appointments", icon: "fa-regular fa-calendar", path: "/appointments" },
     { name: "Inventory", icon: "fa-solid fa-box", path: "/inventory" },
-    { name: "Cash Flow", icon: "fa-solid fa-money-bill", path: "/cash" },
+    { name: "Branch Overview", icon: "fa-solid fa-layer-group", path: "/branches/overview" },
+    
   ];
 
+  // 👑 Owner (ลูกค้า) — ดูสรุปและนัดหมาย
+  const ownerMenu = [
+    { name: "Owner Dashboard", icon: "fa-solid fa-chart-line", path: "/" },
+    { name: "My Profile", icon: "fa-regular fa-user", path: "/profile" },
+    { name: "Patients (Pets)", icon: "fa-solid fa-dog", path: "/pets" },
+    { name: "Pet Detail (Demo)", icon: "fa-solid fa-id-badge", path: "/pet-detail/1" },
+    { name: "Appointments", icon: "fa-regular fa-calendar", path: "/appointments" },
+   /*  { name: "Dashboard", icon: "fa-solid fa-chart-line", path: "/" }, */
+  ];
+
+  // 🧠 SuperAdmin
   const superAdminMenu = [
     { name: "SuperAdmin Dashboard", icon: "fa-solid fa-shield-halved", path: "/superadmin" },
     { name: "Manage All Branches", icon: "fa-solid fa-building", path: "/branches/manage" },
-    { name: "View Consolidated Data", icon: "fa-solid fa-layer-group", path: "/branches/overview" },
+    { name: "Manage Users & Roles", icon: "fa-solid fa-users-gear", path: "/superadmin/roles" },
     { name: "Move Customers & Staff", icon: "fa-solid fa-arrows-rotate", path: "/branches/transfer" },
     { name: "Move Requests", icon: "fa-solid fa-list", path: "/branches/move-requests" },
+    { name: "Consolidated View", icon: "fa-solid fa-chart-pie", path: "/consolidated" },
+    { name: "Cash Flow", icon: "fa-solid fa-money-bill", path: "/cash" },
   ];
 
+  // 🏢 Branch Admin
   const branchAdminMenu = [
-    { name: "Branch Admin", icon: "fa-solid fa-screwdriver-wrench", path: "/admin" },
-    // keep only one transfer-request link (remove duplicate)
+    { name: "Branch Admin Dashboard", icon: "fa-solid fa-chart-pie", path: "/admin/dashboard" },
     { name: "Request Transfer (staff/customer)", icon: "fa-solid fa-paper-plane", path: "/branches/transfer-request" },
     { name: "View Move Requests", icon: "fa-solid fa-list", path: "/branches/move-requests" },
     { name: "Move Request History", icon: "fa-solid fa-clock-rotate-left", path: "/branches/history" },
     { name: "Stock Alerts & Appointments", icon: "fa-solid fa-bell", path: "/admin/alerts" },
-    { name: "Update Inventory (Admin)", icon: "fa-solid fa-boxes-packing", path: "/admin/inventory/update" },
-
+    { name: "Update Inventory", icon: "fa-solid fa-boxes-packing", path: "/admin/inventory/update" },
+    { name: "Branch Summary", icon: "fa-solid fa-layer-group", path: "/branch-summary" },
+    { name: "Cash Flow", icon: "fa-solid fa-money-bill", path: "/cash" },
   ];
 
-  /* owner */
-  const ownerMenu = [
-  { name: "My Pets", icon: "fa-solid fa-paw", path: "/frontEnd/src/pages/OwnerPet/OwnerPets" },
-  { name: "My Profile", icon: "fa-regular fa-user", path: "/frontEnd/src/pages/OwnerPet/OwnerProfile" },
 
-];
 
+  // 👩‍⚕️ Staff (เมนูเฉพาะของ staff)
+  const staffMenu = [
+    { name: "Staff Dashboard", icon: "fa-solid fa-user-nurse", path: "/staff-dashboard" },
+    { name: "My Appointments", icon: "fa-regular fa-calendar", path: "/appointments" },
+    { name: "My Schedule", icon: "fa-solid fa-clock", path: "/schedule" },
+    { name: "Inventory", icon: "fa-solid fa-box", path: "/inventory" },
+  ];
+
+  // ✅ กำหนดเมนูตาม role
   let menuItems = [...baseMenu];
+
   if (roles.includes("superadmin")) {
-    menuItems = [...superAdminMenu, ...menuItems];
+    menuItems = [...superAdminMenu, ...baseMenu];
   } else if (roles.includes("branchadmin")) {
-    menuItems = [...branchAdminMenu, ...menuItems];
-  }  else if (roles.includes("owner")) {
-    // owner จะเห็นเฉพาะของตัวเองเท่านั้น
+    menuItems = [...branchAdminMenu, ...baseMenu];
+  } else if (roles.includes("staff")) {
+    menuItems = [...staffMenu, ...baseMenu]; // staff มี sidebar ของตัวเอง
+  } else if (roles.includes("owner")) {
+    // 👇 owner จะเห็นเฉพาะของตัวเองเท่านั้น
     menuItems = [...ownerMenu];
   } else {
     // ถ้าไม่ใช่ role พิเศษใด ๆ (เช่น staff)
     menuItems = [...baseMenu];
   }
 
+  // 🧭 Logout
   const handleLogoutClick = () => {
     if (onLogout) onLogout();
     navigate("/login");
   };
 
+  // 🖼️ UI
   return (
     <div className="sidebar">
       <div>
