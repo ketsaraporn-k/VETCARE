@@ -33,10 +33,9 @@ const Sidebar = ({ user, onLogout }) => {
   const ownerMenu = [
     { name: "Owner Dashboard", icon: "fa-solid fa-chart-line", path: "/" },
     { name: "My Profile", icon: "fa-regular fa-user", path: "/profile" },
-    { name: "Patients (Pets)", icon: "fa-solid fa-dog", path: "/pets" },
-    { name: "Pet Detail (Demo)", icon: "fa-solid fa-id-badge", path: "/pet-detail/1" },
+    { name: "My Pets", icon: "fa-solid fa-dog", path: "/pets" },
+    { name: "Pet Detail ", icon: "fa-solid fa-id-badge", path: "/pet-detail/1" },
     { name: "Appointments", icon: "fa-regular fa-calendar", path: "/appointments" },
-   /*  { name: "Dashboard", icon: "fa-solid fa-chart-line", path: "/" }, */
   ];
 
   // 🧠 SuperAdmin
@@ -84,7 +83,10 @@ const Sidebar = ({ user, onLogout }) => {
   } else if (roles.includes("owner")) {
     // 👇 owner จะเห็นเฉพาะของตัวเองเท่านั้น
     menuItems = [...ownerMenu];
-  } 
+  } else {
+    // ถ้าไม่ใช่ role พิเศษใด ๆ (เช่น staff)
+    menuItems = [...baseMenu];
+  }
 
   // 🧭 Logout
   const handleLogoutClick = () => {

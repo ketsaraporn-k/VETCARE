@@ -96,10 +96,9 @@ function App() {
 
 
               {/* owner area */}
-              <Route path="owner/dashboard" element={<OwnerDashboard user={user} />} />
-              <Route path="owner/pet/:id" element={<OwnerPetDetail user={user} />} />
-              <Route path="owner/profile" element={<OwnerProfile user={user} />} />
-
+              <Route path="/owner/dashboard" element={<OwnerDashboard />} />
+              <Route path="/owner/pet-detail/:id" element={<OwnerPetDetail />} />
+              <Route path="/owner/profile" element={<OwnerProfile />} />
             </Route>
 
             <Route path="/login" element={<Navigate to="/" replace />} />
