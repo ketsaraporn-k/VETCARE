@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import api from "../api/axiosConfig";
+import api from "../../api/axiosConfig";
 import "./BranchManage.css";
 
 const BRANCH_BASE = "/branches"; // adjust if needed
