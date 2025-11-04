@@ -1,5 +1,5 @@
 import React from "react";
-import "./Dashboard.css";
+import "./OwnerDashboard.css";
 import NotificationPopup from "../components/NotificationPopup";
 
 const Dashboard = () => {

@@ -3,12 +3,14 @@ import React, { useState, useEffect } from "react";
 import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 
 // Pages...
-import Dashboard from "./pages/Dashboard";
-import Pets from "./pages/Pets";
-import PetDetail from "./pages/PetDetail";
-import Profile from "./pages/Profile";
+//Owner pages
+import Dashboard from "./pages/OwnerDashboard.jsx";
+import Pets from "./pages/OwnerPets.jsx";
+import PetDetail from "./pages/OwnerPetDetail.jsx";
+import Profile from "./pages/OwnerProfile.jsx";
+import Appointments from "./pages/OwnerAppointments.jsx";
+
 import Auth from "./components/Auth";
-import Appointments from "./pages/Appointments";
 import Inventory from "./pages/Inventory";
 import CashFlow from "./pages/CashFlow";
 import ConsolidatedView from "./pages/ConsolidatedView";
@@ -28,13 +30,6 @@ import UserRoleManage from "./pages/superAdmin/UserRoleManage.jsx";
 import BranchManage from "./pages/superAdmin/BranchManage";
 import BranchTransfer from "./pages/superAdmin/BranchTransfer";
 import SuperAdmin from "./pages/superAdmin/SuperAdmin";
-
-// Owner pages
-import OwnerDashboard from "./pages/OwnerPet/OwnerDashboard";
-import OwnerPetDetail from "./pages/OwnerPet/OwnerPetDetail";
-import OwnerProfile from "./pages/OwnerPet/OwnerProfile";
-
-
 
 // Layout
 import MainLayout from "./layout/MainLayout";
@@ -96,9 +91,9 @@ function App() {
 
 
               {/* owner area */}
-              <Route path="/owner/dashboard" element={<OwnerDashboard />} />
-              <Route path="/owner/pet-detail/:id" element={<OwnerPetDetail />} />
-              <Route path="/owner/profile" element={<OwnerProfile />} />
+              
+              
+              
             </Route>
 
             <Route path="/login" element={<Navigate to="/" replace />} />

@@ -4,6 +4,10 @@ const cors = require('cors');
 require('dotenv').config();
 require('./db');
 
+//uploadspic
+const path = require('path'); // เพิ่มเพื่อจัดการ path ได้ถูกต้อง
+
+
 const app = express();
 /* app.use(cors()); */
 app.use(cors({
@@ -12,6 +16,12 @@ app.use(cors({
 }));
 
 app.use(express.json());
+
+//  เพิ่มเพื่อเสิร์ฟไฟล์ static (เช่น avatar หรือรูปอื่น ๆ)
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+
+//  ถ้ามีโฟลเดอร์ชื่ออื่น เช่น uploadspic ให้เปิดเพิ่มได้ เช่น
+// app.use('/uploadspic', express.static(path.join(__dirname, 'uploadspic')));
 
 //  Import routes
 const userRoutes = require('./routes/userRoutes');
@@ -22,12 +32,16 @@ const medicineRoutes = require('./routes/medicineRoutes');
 const notificationRoutes = require('./routes/notificationRoutes');
 
 //  ใช้งาน routes
+//uploadspic
+/* app.use("/uploads", express.static("uploads")); */
 app.use('/api/users', userRoutes);
 app.use('/api/branches', branchRoutes);
 app.use('/api/vaccinations', vaccinationRoutes);
 app.use('/api/treatments', treatmentRoutes);
 app.use('/api/medicines', medicineRoutes);
 app.use('/api/notifications', notificationRoutes);
+
+
 
 //Nori pop up (socket)
 const server = require('http').createServer(app);

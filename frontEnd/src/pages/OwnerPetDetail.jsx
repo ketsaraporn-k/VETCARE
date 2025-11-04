@@ -1,10 +1,10 @@
-// src/pages/PetDetail.jsx
+//
 import React, { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import api from "../api/axiosConfig";
 import PetInfoCard from "../components/PetInfoCard";
 import MedicalRecordPanel from "../components/MedicalRecordPanel";
-import "./PetDetail.css";
+import "./OwnerPetDetail.css";
 
 const PetDetail = () => {
   const { id } = useParams();

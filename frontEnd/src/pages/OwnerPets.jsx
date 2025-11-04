@@ -2,7 +2,7 @@
 import React, { useEffect, useState } from "react";
 import axios from "axios";
 import { Link } from "react-router-dom";
-import "./Pets.css";
+import "./OwnerPets.css";
 
 const Pets = () => {
   const [pets, setPets] = useState([]);

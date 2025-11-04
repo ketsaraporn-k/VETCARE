@@ -32,10 +32,11 @@ const Sidebar = ({ user, onLogout }) => {
   // 👑 Owner (ลูกค้า) — ดูสรุปและนัดหมาย
   const ownerMenu = [
     { name: "Owner Dashboard", icon: "fa-solid fa-chart-line", path: "/" },
-    { name: "My Profile", icon: "fa-regular fa-user", path: "/profile" },
-    { name: "My Pets", icon: "fa-solid fa-dog", path: "/pets" },
-    { name: "Pet Detail ", icon: "fa-solid fa-id-badge", path: "/pet-detail/1" },
-    { name: "Appointments", icon: "fa-regular fa-calendar", path: "/appointments" },
+    { name: "Owner Profile", icon: "fa-regular fa-user", path: "/profile" },
+    { name: "Owner Pets", icon: "fa-solid fa-dog", path: "/pets" },
+    { name: "Owner Pet Detail ", icon: "fa-solid fa-id-badge", path: "/pet-detail/1" },
+    { name: "Owner Appointments", icon: "fa-regular fa-calendar", path: "/appointments" },
+
   ];
 
   // 🧠 SuperAdmin
