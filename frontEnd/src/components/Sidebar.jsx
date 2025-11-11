@@ -6,7 +6,6 @@ import "./Sidebar.css";
 const Sidebar = ({ user, onLogout }) => {
   const navigate = useNavigate();
 
-  // ✅ ดึง role จาก user
   const getRolesFromUserProp = (u) => {
     if (!u) return [];
     const raw = u.role ?? u.roles ?? null;
@@ -17,7 +16,6 @@ const Sidebar = ({ user, onLogout }) => {
 
   const roles = getRolesFromUserProp(user);
 
-  // 🐾 เมนูพื้นฐาน (ทุกคนเห็น)
   const baseMenu = [
     { name: "Dashboard", icon: "fa-solid fa-chart-line", path: "/" },
     { name: "Patients (Pets)", icon: "fa-solid fa-dog", path: "/pets" },
@@ -26,20 +24,16 @@ const Sidebar = ({ user, onLogout }) => {
     { name: "Appointments", icon: "fa-regular fa-calendar", path: "/appointments" },
     { name: "Inventory", icon: "fa-solid fa-box", path: "/inventory" },
     { name: "Branch Overview", icon: "fa-solid fa-layer-group", path: "/branches/overview" },
-    
   ];
 
-  // 👑 Owner (ลูกค้า) — ดูสรุปและนัดหมาย
   const ownerMenu = [
     { name: "Owner Dashboard", icon: "fa-solid fa-chart-line", path: "/" },
     { name: "Owner Profile", icon: "fa-regular fa-user", path: "/profile" },
     { name: "Owner Pets", icon: "fa-solid fa-dog", path: "/pets" },
     { name: "Owner Pet Detail ", icon: "fa-solid fa-id-badge", path: "/pet-detail/1" },
     { name: "Owner Appointments", icon: "fa-regular fa-calendar", path: "/appointments" },
-
   ];
 
-  // 🧠 SuperAdmin
   const superAdminMenu = [
     { name: "SuperAdmin Dashboard", icon: "fa-solid fa-shield-halved", path: "/superadmin" },
     { name: "Manage All Branches", icon: "fa-solid fa-building", path: "/branches/manage" },
@@ -50,7 +44,6 @@ const Sidebar = ({ user, onLogout }) => {
     { name: "Cash Flow", icon: "fa-solid fa-money-bill", path: "/cash" },
   ];
 
-  // 🏢 Branch Admin
   const branchAdminMenu = [
     { name: "Branch Admin Dashboard", icon: "fa-solid fa-chart-pie", path: "/admin/dashboard" },
     { name: "Request Transfer (staff/customer)", icon: "fa-solid fa-paper-plane", path: "/branches/transfer-request" },
@@ -62,9 +55,6 @@ const Sidebar = ({ user, onLogout }) => {
     { name: "Cash Flow", icon: "fa-solid fa-money-bill", path: "/cash" },
   ];
 
-
-
-  // 👩‍⚕️ Staff (เมนูเฉพาะของ staff)
   const staffMenu = [
     { name: "Staff Dashboard", icon: "fa-solid fa-user-nurse", path: "/staff-dashboard" },
     { name: "My Appointments", icon: "fa-regular fa-calendar", path: "/appointments" },
@@ -72,7 +62,6 @@ const Sidebar = ({ user, onLogout }) => {
     { name: "Inventory", icon: "fa-solid fa-box", path: "/inventory" },
   ];
 
-  // ✅ กำหนดเมนูตาม role
   let menuItems = [...baseMenu];
 
   if (roles.includes("superadmin")) {
@@ -80,22 +69,18 @@ const Sidebar = ({ user, onLogout }) => {
   } else if (roles.includes("branchadmin")) {
     menuItems = [...branchAdminMenu, ...baseMenu];
   } else if (roles.includes("staff")) {
-    menuItems = [...staffMenu, ...baseMenu]; // staff มี sidebar ของตัวเอง
+    menuItems = [...staffMenu, ...baseMenu];
   } else if (roles.includes("owner")) {
-    // 👇 owner จะเห็นเฉพาะของตัวเองเท่านั้น
     menuItems = [...ownerMenu];
   } else {
-    // ถ้าไม่ใช่ role พิเศษใด ๆ (เช่น staff)
     menuItems = [...baseMenu];
   }
 
-  // 🧭 Logout
-  const handleLogoutClick = () => {
-    if (onLogout) onLogout();
+  const handleLogoutClick = async () => {
+    if (onLogout) await onLogout();
     navigate("/login");
   };
 
-  // 🖼️ UI
   return (
     <div className="sidebar">
       <div>
@@ -121,8 +106,8 @@ const Sidebar = ({ user, onLogout }) => {
       <div className="sidebar-profile">
         <img src="/images/avatar.png" alt="avatar" />
         <div className="info">
-          <div className="user-name">{user.name}</div>
-          <div className="user-role">{user.role}</div>
+          <div className="user-name">{user?.name || user?.username || "Guest"}</div>
+          <div className="user-role">{Array.isArray(user?.role) ? user.role.join(", ") : user?.role}</div>
         </div>
 
         <button className="logout-btn" onClick={handleLogoutClick}>

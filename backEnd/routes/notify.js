@@ -1,41 +1,24 @@
+// backEnd/routes/notify.js
 const express = require('express');
 const router = express.Router();
-const Notification = require('../models/Notification');
+const { createNotification } = require('../utils/notify');
+const auth = require('../middleware/auth'); // ถ้าต้องการให้ auth
 
-// GET แจ้งเตือนทั้งหมดของผู้ใช้
-router.get('/:userId', async (req, res) => {
+// POST /api/notify   -> body: { userId or userIds, payload }
+router.post('/', auth, async (req, res) => {
   try {
-    const notifications = await Notification.find({ userId: req.params.userId }).sort({ createdAt: -1 });
-    res.json(notifications);
+    const { userOrIds, payload } = req.body;
+    if (!userOrIds) return res.status(422).json({ error: 'userOrIds required' });
+
+    const result = await createNotification(userOrIds, payload || {});
+    return res.status(201).json({ result });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error('notify create err', err);
+    return res.status(500).json({ error: err.message || 'Server error' });
   }
 });
 
-// POST สร้างแจ้งเตือนใหม่
-router.post('/', async (req, res) => {
-  try {
-    const { userId, message, type } = req.body;
-    const notification = new Notification({ userId, message, type });
-    await notification.save();
-    res.json({ message: 'Notification created', data: notification });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// PUT อัพเดตสถานะอ่านแล้ว
-router.put('/:id/read', async (req, res) => {
-  try {
-    const notification = await Notification.findByIdAndUpdate(
-      req.params.id,
-      { status: 'read' },
-      { new: true }
-    );
-    res.json(notification);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
+// optional: GET /api/notify/test to check util
+router.get('/test', (req, res) => res.json({ ok: true }));
 
 module.exports = router;

@@ -1,55 +1,77 @@
 // src/components/Auth.jsx
 import React, { useState } from "react";
+import api from "../api/axiosConfig";
 import "./Auth.css";
-
 
 export default function Auth({ onLogin }) {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
 
-  const handleLogin = async (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
+    setLoading(true);
+    setError(null);
 
     try {
-      const res = await fetch("http://localhost:3000/api/users/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username, password }),
-      });
+      // 1) send credentials. Backend may return { user } or { token, user } or set httpOnly cookie
+      const res = await api.post("/api/users/login", { username, password });
 
-      const data = await res.json();
-
-      if (!res.ok) {
-        alert(`❌ ${data.error || "Login failed"}`);
-        return;
+      // backend might return sanitized user (cookie-based) or token+user
+      const returned = res.data || {};
+      if (returned.token) {
+        try { localStorage.setItem("token", returned.token); } catch {}
       }
 
-      alert(`✅ Welcome ${data.user.name} (${data.user.role})`);
-      localStorage.setItem("token", data.token); // เก็บ token ไว้ใช้ต่อ
-      onLogin(data.user); // ส่งข้อมูล user กลับไปให้ App.jsx
+      // If backend returned user, use it; else fetch profile
+      let user = returned.user || null;
+      if (!user) {
+        // try to fetch profile (cookie or bearer token)
+        const prof = await api.get("/api/users/profile");
+        user = prof.data;
+      }
+
+      if (!user) throw new Error("Login succeeded but no user returned");
+
+      // persist user and call parent
+      try { localStorage.setItem("user", JSON.stringify(user)); } catch {}
+      if (onLogin) onLogin(user);
     } catch (err) {
-      console.error("Login error:", err);
-      alert("Server error!");
+      console.error("login err", err);
+      const msg = err?.response?.data?.error || err.message || "Login failed";
+      setError(msg);
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
     <div className="auth-container">
-      <h2>🔐 Login</h2>
-      <form onSubmit={handleLogin}>
+      <form onSubmit={handleSubmit} className="auth-form">
+        <h2>Sign in</h2>
+        {error && <div className="auth-error">{error}</div>}
+
+        <label>Username</label>
         <input
-          type="text"
-          placeholder="username"
           value={username}
           onChange={(e) => setUsername(e.target.value)}
+          required
+          autoComplete="username"
         />
+
+        <label>Password</label>
         <input
           type="password"
-          placeholder="password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
+          required
+          autoComplete="current-password"
         />
-        <button type="submit">Login</button>
+
+        <button type="submit" disabled={loading}>
+          {loading ? "Signing in..." : "Sign in"}
+        </button>
       </form>
     </div>
   );
