@@ -1,12 +1,10 @@
-// backEnd/routes/branchAdminActions.js
+// backEnd/routes/noriApi/branchAdminActions.js
 const express = require('express');
 const router = express.Router();
 const mongoose = require('mongoose');
 
 const User = require('../models/User');
 const MoveRequest = require('../models/MoveRequest');
-const Branch = require('../models/Branch');
-const { createNotification } = require('../utils/notify');
 const auth = require('../middleware/auth');
 const role = require('../middleware/role');
 
@@ -23,7 +21,7 @@ async function populateHistoryUsers(moveRequests) {
   });
   if (ids.size === 0) return moveRequests;
 
-  const users = await User.find({ _id: { $in: Array.from(ids) } }).select('username name').lean();
+  const users = await User.find({ _id: { $in: Array.from(ids) } }).select('username name');
   const userMap = {};
   users.forEach(u => { userMap[String(u._id)] = { _id: u._id, username: u.username, name: u.name }; });
 
@@ -59,10 +57,6 @@ router.post('/moveRequest', auth, role(['branchAdmin']), async (req, res) => {
   try {
     const { subjectUserId, toBranch, reason, metadata } = req.body;
     if (!subjectUserId || !toBranch) return res.status(422).json({ error: 'subjectUserId and toBranch required' });
-
-    if (!mongoose.Types.ObjectId.isValid(subjectUserId) || !mongoose.Types.ObjectId.isValid(toBranch)) {
-      return res.status(422).json({ error: 'Invalid subjectUserId or toBranch' });
-    }
 
     const subjectUser = await User.findById(subjectUserId);
     if (!subjectUser) return res.status(404).json({ error: 'Subject user not found' });
@@ -101,21 +95,14 @@ router.post('/moveRequest', auth, role(['branchAdmin']), async (req, res) => {
     });
 
     await mv.save();
-
-    // Notify superAdmins (or the requester as fallback)
-    try {
-      const superAdmins = await User.find({ role: 'superAdmin' }).select('_id').lean();
-      const recipientIds = (superAdmins && superAdmins.length) ? superAdmins.map(s => s._id) : [req.user._id];
-
-      await createNotification(recipientIds, {
-        type: 'system',
-        message: `New move request from ${req.user.username} for ${subjectUser.username}`,
-        data: { moveRequestId: mv._id, subjectUserId }
-      });
-    } catch (e) {
-      console.warn('notify superAdmins failed', e);
-    }
-
+    // after saving mv
+    await Notification.create({
+      userId: someUserId, // e.g. superAdmin(s) or requester
+      type: 'move_request',
+      message: `New move request from ${req.user.username} for ${subjectUser.username}`,
+      targetId: mv._id,
+      metadata: { subjectUserId: subjectUserId }
+    });
     const populated = await MoveRequest.findById(mv._id).populate('requesterId subjectUserId fromBranch toBranch');
     await populateHistoryUsers([populated]);
 
@@ -133,7 +120,7 @@ router.get('/moveRequests', auth, role(['branchAdmin', 'superAdmin']), async (re
   try {
     const user = req.user;
     let filter = {};
-    if (user.role && String(user.role).toLowerCase() === 'branchadmin') {
+    if (user.role && user.role.toString().toLowerCase() === 'branchadmin') {
       filter = { $or: [{ requesterId: user._id }, { fromBranch: user.branchId }] };
     }
     const requests = await MoveRequest.find(filter).populate('requesterId subjectUserId fromBranch toBranch').sort({ createdAt: -1 });
@@ -185,16 +172,6 @@ router.put('/moveRequest/approve/:id', auth, role(['superAdmin']), async (req, r
 
     try { if (req.io) req.io.emit('moveRequestApproved', { moveRequest: populated, updatedUser }); } catch (e) { }
 
-    // notify requester and subject user
-    try {
-      const notifyTargets = [String(mv.requesterId), String(mv.subjectUserId)];
-      await createNotification(notifyTargets, {
-        type: 'system',
-        message: `Move request approved: ${populated._id}`,
-        data: { moveRequestId: mv._id }
-      });
-    } catch (e) { console.warn('notify after approve failed', e); }
-
     return res.json({ message: 'Move request approved and user moved', moveRequest: populated, updatedUser });
   } catch (err) {
     console.error('approve err', err);
@@ -221,15 +198,6 @@ router.put('/moveRequest/reject/:id', auth, role(['superAdmin']), async (req, re
     await populateHistoryUsers([populated]);
 
     try { if (req.io) req.io.emit('moveRequestRejected', { moveRequest: populated }); } catch (e) { }
-
-    // notify requester
-    try {
-      await createNotification(String(mv.requesterId), {
-        type: 'system',
-        message: `Move request rejected: ${populated._id}`,
-        data: { moveRequestId: mv._id }
-      });
-    } catch (e) { console.warn('notify after reject failed', e); }
 
     return res.json({ message: 'Move request rejected', moveRequest: populated });
   } catch (err) {
@@ -272,15 +240,6 @@ router.put('/moveRequest/cancel/:id', auth, role(['branchAdmin', 'superAdmin']),
 
     try { if (req.io) req.io.emit('moveRequestCancelled', { moveRequest: populated }); } catch (e) { }
 
-    // notify requester and subject
-    try {
-      await createNotification([String(mv.requesterId), String(mv.subjectUserId)], {
-        type: 'system',
-        message: `Move request cancelled: ${populated._id}`,
-        data: { moveRequestId: mv._id }
-      });
-    } catch (e) { console.warn('notify after cancel failed', e); }
-
     return res.json({ message: 'Move request cancelled', moveRequest: populated });
   } catch (err) {
     console.error('cancel moveRequest err', err);
@@ -293,7 +252,6 @@ router.put('/moveUser/:userId', auth, role(['superAdmin']), async (req, res) => 
   try {
     const { targetBranch } = req.body;
     if (!targetBranch) return res.status(422).json({ error: 'targetBranch required' });
-    if (!mongoose.Types.ObjectId.isValid(targetBranch)) return res.status(422).json({ error: 'Invalid targetBranch' });
 
     const updated = await User.findByIdAndUpdate(req.params.userId, { branchId: targetBranch }, { new: true });
     if (!updated) return res.status(404).json({ error: 'User not found' });
@@ -313,15 +271,6 @@ router.put('/moveUser/:userId', auth, role(['superAdmin']), async (req, res) => 
     }
 
     try { if (req.io) req.io.emit('userMoved', { userId: updated._id, newBranch: targetBranch }); } catch (e) { }
-
-    // notify affected users
-    try {
-      await createNotification(String(updated._id), {
-        type: 'system',
-        message: `Your account was moved to branch ${targetBranch} by ${req.user.username}`,
-        data: { newBranch: targetBranch }
-      });
-    } catch (e) { console.warn('notify direct move failed', e); }
 
     return res.json({ message: 'User moved successfully', updated });
   } catch (err) {

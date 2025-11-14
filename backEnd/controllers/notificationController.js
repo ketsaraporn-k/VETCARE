@@ -1,21 +1,22 @@
 // backEnd/controllers/notificationController.js
-const User = require('../models/User');
+const Notification = require('../models/Notification');
 
 /**
  * GET /api/notifications
- * returns notifications for current user (req.user.id expected)
+ * ดึงแจ้งเตือนของผู้ที่ login (req.user)
+ * query params: ?limit=20
  */
 exports.getNotifications = async (req, res) => {
   try {
-    const userId = req.user?.id || req.user?._id;
-    if (!userId) return res.status(401).json({ error: 'Unauthorized' });
-
+    const userId = req.user._id;
     const limit = Math.min(200, Number(req.query.limit || 50));
-    const user = await User.findById(userId).select('notifications unreadNotifications').lean();
-    if (!user) return res.status(404).json({ error: 'User not found' });
 
-    const items = (user.notifications || []).slice().sort((a,b) => new Date(b.createdAt) - new Date(a.createdAt)).slice(0, limit);
-    return res.json({ notifications: items, unread: user.unreadNotifications || 0 });
+    const items = await Notification.find({ userId })
+      .sort({ createdAt: -1 })
+      .limit(limit)
+      .lean();
+
+    return res.json(items);
   } catch (err) {
     console.error('getNotifications err:', err);
     return res.status(500).json({ error: err.message || 'Server error' });
@@ -24,27 +25,21 @@ exports.getNotifications = async (req, res) => {
 
 /**
  * PUT /api/notifications/:id/read
- * mark a user's embedded notification as read
+ * mark notification as read (only owner allowed)
  */
 exports.markRead = async (req, res) => {
   try {
     const id = req.params.id;
-    const userId = req.user?.id || req.user?._id;
-    if (!userId) return res.status(401).json({ error: 'Unauthorized' });
+    const userId = req.user._id;
 
-    const user = await User.findById(userId);
-    if (!user) return res.status(404).json({ error: 'User not found' });
+    const noti = await Notification.findById(id);
+    if (!noti) return res.status(404).json({ error: 'Notification not found' });
+    if (String(noti.userId) !== String(userId)) return res.status(403).json({ error: 'Permission denied' });
 
-    const n = user.notifications.id(id);
-    if (!n) return res.status(404).json({ error: 'Notification not found' });
+    noti.status = 'read';
+    await noti.save();
 
-    if (n.status === 'unread') {
-      n.status = 'read';
-      user.unreadNotifications = Math.max(0, (user.unreadNotifications || 0) - 1);
-    }
-    await user.save();
-
-    return res.json({ notification: (n.toObject ? n.toObject() : n), unread: user.unreadNotifications || 0 });
+    return res.json(noti);
   } catch (err) {
     console.error('markRead err:', err);
     return res.status(500).json({ error: err.message || 'Server error' });

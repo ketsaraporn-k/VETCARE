@@ -1,24 +1,31 @@
-// backEnd/staff/vaccinationManage.js
 const express = require("express");
 const mongoose = require("mongoose");
-const User = require("../models/User");
-const Branch = require("../models/Branch");
-const Notification = (() => { try { return require("../models/Notification"); } catch(e){ return null; } })();
+const Vaccination = require("../models/Vaccination");
+const Notification = require("../models/Notification");
+const Pet = require("../models/Pet");
 const auth = require("../middleware/auth");
 
 const router = express.Router();
-const isOid = v => mongoose.isValidObjectId(String(v || ""));
-const isSuper = role => String(role || "").toLowerCase() === "superadmin";
 
+const isSuper = (role) => String(role || "").toLowerCase() === "superadmin";
+
+// ตรวจสิทธิ์และสาขา
 function checkRoleBranch(req, roles = []) {
   const user = req.user || {};
   const role = user.role || "guest";
-  if (!roles.includes(role) && !isSuper(role)) return { ok: false, error: "ไม่มีสิทธิ์เข้าถึง" };
+
+  if (!roles.includes(role) && !isSuper(role)) {
+    return { ok: false, error: "ไม่มีสิทธิ์เข้าถึง" };
+  }
+
   const reqBranch = req.body?.branchId || req.query?.branchId || req.params?.branchId;
-  if (!isSuper(role) && user.branchId && reqBranch && String(user.branchId) !== String(reqBranch)) return { ok: false, error: "เข้าถึงได้เฉพาะสาขาของตนเอง" };
+  if (!isSuper(role) && user.branchId && reqBranch && String(user.branchId) !== String(reqBranch)) {
+    return { ok: false, error: "เข้าถึงได้เฉพาะสาขาของตนเอง" };
+  }
   return { ok: true };
 }
 
+// Helper: parse/validate date 
 function toDateOrNull(v, fieldName) {
   if (v == null) return null;
   const d = new Date(v);
@@ -30,89 +37,118 @@ function toDateOrNull(v, fieldName) {
   return d;
 }
 
-// POST /:ownerId/:petId/vaccinations
-router.post("/:ownerId/:petId", auth, async (req, res) => {
+// เพิ่มข้อมูลการฉีดวัคซีน
+router.post("/:petId", auth, async (req, res) => {
   const chk = checkRoleBranch(req, ["staff", "branchAdmin"]);
   if (!chk.ok) return res.status(403).json({ error: chk.error });
 
   try {
-    const { ownerId, petId } = req.params;
-    if (!isOid(ownerId) || !isOid(petId)) return res.status(400).json({ error: "Invalid id(s)" });
-
-    const owner = await User.findById(ownerId);
-    if (!owner) return res.status(404).json({ error: "Owner not found" });
-
-    const pet = owner.pets.id(petId);
-    if (!pet) return res.status(404).json({ error: "Pet not found" });
-
-    const branchId = isSuper(req.user.role) ? (req.body.branchId || owner.branchId || req.user.branchId) : req.user.branchId;
-    if (!branchId) return res.status(400).json({ error: "branchId missing" });
-    const branch = await Branch.findById(branchId);
-    if (!branch) return res.status(404).json({ error: "Branch not found" });
-
-    const vaccineTypeRaw = (req.body.vaccineType || req.body.vaccineName || "").toString().trim();
-    if (!vaccineTypeRaw) return res.status(400).json({ error: "vaccineType required" });
-
-    const dateGiven = req.body.dateGiven ? toDateOrNull(req.body.dateGiven, "dateGiven") : new Date();
-    const nextDueDate = req.body.nextDueDate ? toDateOrNull(req.body.nextDueDate, "nextDueDate") : null;
-
-    const v = {
-      branchId,
-      medicineId: req.body.medicineId || null,
-      medicineNameSnapshot: req.body.vaccineName || vaccineTypeRaw,
-      doseQty: Number(req.body.doseQty || 1),
-      batch: req.body.batch || null,
-      expiryDate: req.body.expiryDate ? toDateOrNull(req.body.expiryDate, "expiryDate") : null,
-      dateGiven,
-      nextDueDate,
-      staffId: req.user.id || null,
-      attachments: Array.isArray(req.body.attachments) ? req.body.attachments : []
-    };
-
-    pet.vaccinations.push(v);
-    await owner.save();
-
-    const newVac = pet.vaccinations[pet.vaccinations.length - 1];
-
-    if (newVac.nextDueDate && Notification) {
-      try {
-        await Notification.create({
-          userId: owner._id,
-          message: `นัดฉีดวัคซีนของ ${pet.name} กำหนดวันที่ ${newVac.nextDueDate.toISOString()}`,
-          type: 'vaccine',
-          data: { petId: pet._id, nextDueDate: newVac.nextDueDate }
-        });
-      } catch (e) { console.warn('notif failed', e); }
+    const { petId } = req.params;
+    if (!mongoose.isValidObjectId(petId)) {
+      return res.status(400).json({ error: "petId ไม่ถูกต้อง" });
     }
 
-    res.status(201).json(newVac);
+    const pet = await Pet.findById(petId).select("branchId ownerId");
+    if (!pet) return res.status(404).json({ error: "ไม่พบสัตว์เลี้ยง" });
+
+    // ตรวจสาขา
+    if (!isSuper(req.user.role) && String(req.user.branchId) !== String(pet.branchId)) {
+      return res.status(403).json({ error: "เข้าถึงได้เฉพาะสาขาของตนเอง" });
+    }
+
+    const userId = req.user?.id || req.user?._id;         
+    const userBranchId = req.user?.branchId;
+    const branchId = isSuper(req.user.role) ? (req.body.branchId || pet.branchId) : userBranchId;
+    if (!branchId) return res.status(400).json({ error: "branchId ของผู้ใช้ไม่พบใน token" });
+
+    
+    // ยอมรับได้ทั้ง vaccineType และ vaccineName; ถ้าไม่ได้ส่ง type มา จะ map จาก name ให้
+    const vaccineTypeRaw = (req.body.vaccineType || req.body.vaccineName || "").toString().trim();
+    if (!vaccineTypeRaw) {
+      return res.status(400).json({ error: "vaccineType จำเป็น" });
+    }
+
+    const dateGiven = req.body.dateGiven ? toDateOrNull(req.body.dateGiven, "dateGiven") : new Date();
+    const nextDueDate = toDateOrNull(req.body.nextDueDate, "nextDueDate");
+
+    const doc = {
+      petId,
+      staffId: userId,
+      branchId,
+      vaccineType: vaccineTypeRaw,                    
+      vaccineName: req.body.vaccineName || vaccineTypeRaw,
+      dateGiven,
+      nextDueDate,
+      note: req.body.note || ""
+    };
+
+    const saved = await Vaccination.create(doc);
+
+    // แจ้งเตือนวัคซีนรอบหน้า (ถ้ามี)
+    if (saved.nextDueDate) {
+      await Notification.create({
+        userId: pet.ownerId,
+        message: `Vaccination reminder for pet — due on ${saved.nextDueDate.toISOString()}`,
+        type: "vaccine", 
+      });
+    }
+
+    res.status(201).json(saved);
   } catch (err) {
-    console.error("add vaccination err", err);
-    const code = err.statusCode || 500;
+    console.error("create vaccination error:", err);
+    const code = err.statusCode || (err.name === "ValidationError" ? 400 : 500);
     res.status(code).json({ error: err.message || "SERVER_ERROR" });
   }
 });
 
-// GET vaccinations by pet -> GET /:ownerId/:petId
-router.get("/:ownerId/:petId", auth, async (req, res) => {
+// ดูประวัติการฉีดวัคซีนของสัตว์
+router.get("/:petId", auth, async (req, res) => {
   const chk = checkRoleBranch(req, ["staff", "branchAdmin"]);
   if (!chk.ok) return res.status(403).json({ error: chk.error });
 
   try {
-    const { ownerId, petId } = req.params;
-    if (!isOid(ownerId) || !isOid(petId)) return res.status(400).json({ error: "Invalid id(s)" });
+    const { petId } = req.params;
+    if (!mongoose.isValidObjectId(petId)) {
+      return res.status(400).json({ error: "petId ไม่ถูกต้อง" });
+    }
 
-    const owner = await User.findById(ownerId).select("pets name branchId").lean();
-    if (!owner) return res.status(404).json({ error: "Owner not found" });
-    const pet = (owner.pets || []).find(p => String(p._id) === String(petId));
-    if (!pet) return res.status(404).json({ error: "Pet not found" });
+    const pet = await Pet.findById(petId).select("branchId");
+    if (!pet) return res.status(404).json({ error: "ไม่พบสัตว์เลี้ยง" });
 
-    if (!isSuper(req.user.role) && req.user.branchId && String(req.user.branchId) !== String(owner.branchId)) return res.status(403).json({ error: "Different branch" });
+    if (!isSuper(req.user.role) && String(req.user.branchId) !== String(pet.branchId)) {
+      return res.status(403).json({ error: "เข้าถึงได้เฉพาะสาขาของตนเอง" });
+    }
 
-    const vaccinations = (pet.vaccinations || []).sort((a,b) => new Date(b.dateGiven) - new Date(a.dateGiven));
-    res.json({ pet: { id: pet._id, name: pet.name }, owner: { id: owner._id, name: owner.name }, vaccinations });
+    const rows = await Vaccination.find({ petId })
+      .populate("staffId", "name role")
+      .sort({ dateGiven: -1 });
+
+    res.json(rows);
   } catch (err) {
-    console.error("get vacs err", err);
+    console.error("fetch vaccination error:", err);
+    res.status(500).json({ error: "SERVER_ERROR" });
+  }
+});
+
+// ดูข้อมูลวัคซีนทั้งหมดในสาขา
+router.get("/branch/:branchId", auth, async (req, res) => {
+  const chk = checkRoleBranch(req, ["staff", "branchAdmin"]);
+  if (!chk.ok) return res.status(403).json({ error: chk.error });
+
+  try {
+    const { branchId } = req.params;
+    if (!mongoose.isValidObjectId(branchId)) {
+      return res.status(400).json({ error: "branchId ไม่ถูกต้อง" });
+    }
+
+    const rows = await Vaccination.find({ branchId })
+      .populate("petId", "name species")
+      .populate("staffId", "name role")
+      .sort({ dateGiven: -1 });
+
+    res.json(rows);
+  } catch (err) {
+    console.error("fetch vaccination by branch error:", err);
     res.status(500).json({ error: "SERVER_ERROR" });
   }
 });

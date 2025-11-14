@@ -1,124 +1,90 @@
+// npm install multer for upload imageOwnerprofile
 /* server.js */
-require('dotenv').config();
-require('./db'); // mongoose connection
-
 const express = require('express');
 const cors = require('cors');
-const path = require('path');
-const http = require('http');
-const cookieParser = require('cookie-parser');
+require('dotenv').config();
+require('./db');
+
+//uploadspic
+const path = require('path'); // เพิ่มเพื่อจัดการ path ได้ถูกต้อง
+
 
 const app = express();
+/* app.use(cors()); */
+app.use(cors({
+  origin: 'http://localhost:5173',
+  credentials: true
+}));
 
-/* --- CORS & Body parsers --- */
-app.use(
-  cors({
-    origin: process.env.CLIENT_ORIGIN || 'http://localhost:5173',
-    credentials: true // important for cookie auth
-  })
-);
-app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+app.use(express.json());
 
-/* --- Cookie parser (populate req.cookies) --- */
-app.use(cookieParser());
-
-/* --- Static uploads --- */
+//  เพิ่มเพื่อเสิร์ฟไฟล์ static (เช่น avatar หรือรูปอื่น ๆ)
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
-/* --- Health check --- */
-app.get('/health', (_req, res) => res.json({ ok: true, ts: new Date() }));
+//  ถ้ามีโฟลเดอร์ชื่ออื่น เช่น uploadspic ให้เปิดเพิ่มได้ เช่น
+// app.use('/uploadspic', express.static(path.join(__dirname, 'uploadspic')));
 
-/* --- HTTP + Socket.IO (ต้องมาก่อน mount routes) --- */
-const server = http.createServer(app);
+//  Import routes
+const userRoutes = require('./routes/userRoutes');
+const branchRoutes = require('./routes/branchRoutes');
+const vaccinationRoutes = require('./routes/vaccinationRoutes');
+const treatmentRoutes = require('./routes/treatmentRoutes');
+const medicineRoutes = require('./routes/medicineRoutes');
+const notificationRoutes = require('./routes/notificationRoutes');
+
+//  ใช้งาน routes
+//uploadspic
+/* app.use("/uploads", express.static("uploads")); */
+app.use('/api/users', userRoutes);
+app.use('/api/branches', branchRoutes);
+app.use('/api/vaccinations', vaccinationRoutes);
+app.use('/api/treatments', treatmentRoutes);
+app.use('/api/medicines', medicineRoutes);
+app.use('/api/notifications', notificationRoutes);
+
+
+
+//Nori pop up (socket)
+const server = require('http').createServer(app);
 const io = require('socket.io')(server, { cors: { origin: '*' } });
 
-/* inject io ให้ controllers/routes ใช้งานได้ผ่าน req.io */
-app.use((req, _res, next) => {
+// inject io to requests (ให้ controllers/route ใช้งานได้ผ่าน req.io)
+app.use((req, res, next) => {
   req.io = io;
   next();
 });
 
-/* --- Safe require + route mounting helpers --- */
-function safeRequire(relPath) {
-  try {
-    const full = path.join(__dirname, relPath);
-    const mod = require(full);
-    return { ok: true, mod };
-  } catch (err) {
-    return { ok: false, error: err };
-  }
-}
-function isRouterLike(router) {
-  return (
-    typeof router === 'function' ||
-    (router && typeof router === 'object' && (typeof router.handle === 'function' || Array.isArray(router.stack)))
-  );
-}
+// Nori API routes (อยู่หลังการ inject io)
+const branchAdminActions = require('./routes/branchAdminActions');
+const userRoleActions = require('./routes/userRoleActions');
+const reportRoutes = require('./routes/report');
+const statRoutes = require('./routes/statistics');
+const notifyRoutes = require('./routes/notify');
 
-/* --- Declare mounts (แก้/เพิ่มตามไฟล์จริงของโปรเจกต์คุณ) --- */
-const mounts = [
-  // core
-  { mountPoint: '/api/users',         relPath: './routes/userRoutes' },
-  { mountPoint: '/api/branches',      relPath: './routes/branchRoutes' },
-  { mountPoint: '/api/notifications', relPath: './routes/notificationRoutes' },
 
-  // admin / nori
-  { mountPoint: '/api/admin',         relPath: './routes/userRoleActions' },
-  { mountPoint: '/api/branchAdmin',   relPath: './routes/branchAdminActions' },
-  { mountPoint: '/api/report',        relPath: './routes/report' },
-  { mountPoint: '/api/stat',          relPath: './routes/statistics' },
 
-  // optional notify route (only if file exists)
-  { mountPoint: '/api/notify',        relPath: './routes/notify' },
+// NOTE: เปลี่ยน mount เป็น /api/branchAdmin ให้ตรงกับชื่อไฟล์
+app.use('/api/admin', userRoleActions);
+app.use('/api/branchAdmin', branchAdminActions);
+app.use('/api/report', reportRoutes);
+app.use('/api/stat', statRoutes);
+app.use('/api/notify', notifyRoutes);
 
-  // staff (subroutes)
-  { mountPoint: '/api/staff',         relPath: './staff/petmanage' },
-  { mountPoint: '/api/staff',         relPath: './staff/treatmentManage' },
-  { mountPoint: '/api/staff/vaccinations', relPath: './staff/vaccinationManage' },
-  { mountPoint: '/api/staff/schedules',     relPath: './staff/scheduleManage' },
-  { mountPoint: '/api/staff-admin',  relPath: './staff/clinicStaffManage' },
-];
+//staff j
+const petManageRoutes = require('./staff/petmanage');
+const treatmentManageRoutes = require('./staff/treatmentManage');
+const vaccinationManageRoutes = require('./staff/vaccinationManage');
+const scheduleManageRoutes = require('./staff/scheduleManage');
+const clinicStaffManageRoutes = require('./staff/clinicStaffManage');
+//staff j
+app.use('/api/staff', petManageRoutes);
+app.use('/api/staff', treatmentManageRoutes);
+app.use('/api/staff/vaccinations', vaccinationManageRoutes); 
+app.use('/api/staff/schedules', scheduleManageRoutes);
+app.use('/api/staff-admin', clinicStaffManageRoutes);
 
-/* Mount safely: require each file, verify export is router-like, then app.use */
-for (const m of mounts) {
-  const r = safeRequire(m.relPath);
-  if (!r.ok) {
-    console.error(`❌ require failed for ${m.relPath}:`, r.error && r.error.message ? r.error.message : r.error);
-    // fail-fast so you see exact problem on startup
-    throw r.error;
-  }
-  const router = r.mod;
-  if (!isRouterLike(router)) {
-    console.error(`❌ Module ${m.relPath} is NOT an Express router/middleware.`);
-    console.error('Exported value (preview):', router && Object.keys ? Object.keys(router).slice(0,6) : router);
-    throw new Error(`Module ${m.relPath} must export an Express router (module.exports = router).`);
-  }
-  console.log(`→ Mounting ${m.relPath} at ${m.mountPoint}`);
-  app.use(m.mountPoint, router);
-}
 
-/* --- 404 handler --- */
-app.use((req, res) => {
-  res.status(404).json({ error: 'Not Found', path: req.originalUrl });
-});
 
-/* --- centralized error handler --- */
-app.use((err, _req, res, _next) => {
-  console.error('🔥 Unhandled error:', err && err.stack ? err.stack : err);
-  res.status(err && err.status ? err.status : 500).json({ error: err && err.message ? err.message : 'Server error' });
-});
 
-/* --- Start server --- */
 const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => console.log(`🚀 Server + Socket.IO running on :${PORT}`));
-
-/* --- Optional graceful shutdown --- */
-process.on('SIGINT', () => {
-  console.log('SIGINT — shutting down');
-  server.close(() => process.exit(0));
-});
-process.on('SIGTERM', () => {
-  console.log('SIGTERM — shutting down');
-  server.close(() => process.exit(0));
-});
+app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));

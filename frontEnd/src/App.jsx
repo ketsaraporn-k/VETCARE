@@ -1,9 +1,9 @@
 // src/App.jsx
 import React, { useState, useEffect } from "react";
 import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
-import api from "./api/axiosConfig";
 
 // Pages...
+//Owner pages
 import Dashboard from "./pages/OwnerDashboard.jsx";
 import Pets from "./pages/OwnerPets.jsx";
 import PetDetail from "./pages/OwnerPetDetail.jsx";
@@ -36,61 +36,22 @@ import MainLayout from "./layout/MainLayout";
 
 function App() {
   const [user, setUser] = useState(null);
-  const [checkingAuth, setCheckingAuth] = useState(true);
 
   const handleLogin = (userData) => {
     setUser(userData);
-    try { localStorage.setItem("user", JSON.stringify(userData)); } catch {}
+    localStorage.setItem("user", JSON.stringify(userData));
   };
 
-  const handleLogout = async () => {
-    try {
-      // try backend logout to clear cookie if backend uses httpOnly cookie
-      await api.post("/api/users/logout").catch(() => {});
-    } catch {}
-    try {
-      localStorage.removeItem("token");
-      localStorage.removeItem("user");
-    } catch {}
+  const handleLogout = () => {
+    localStorage.removeItem("token");
+    localStorage.removeItem("user");
     setUser(null);
   };
 
-  // on mount: try to load user from localStorage, else call profile endpoint
   useEffect(() => {
-    let mounted = true;
-    const stored = (() => {
-      try { return localStorage.getItem("user"); } catch { return null; }
-    })();
-    if (stored) {
-      try {
-        const u = JSON.parse(stored);
-        setUser(u);
-        setCheckingAuth(false);
-        return;
-      } catch (e) { /* ignore */ }
-    }
-
-    // fallback: ask server for profile (cookie or bearer token)
-    (async () => {
-      try {
-        const res = await api.get("/api/users/profile");
-        if (!mounted) return;
-        setUser(res.data);
-        try { localStorage.setItem("user", JSON.stringify(res.data)); } catch {}
-      } catch (err) {
-        // not authenticated or server error -> keep user null
-        if (mounted) setUser(null);
-      } finally {
-        if (mounted) setCheckingAuth(false);
-      }
-    })();
-
-    return () => { mounted = false; };
+    const storedUser = localStorage.getItem("user");
+    if (storedUser) setUser(JSON.parse(storedUser));
   }, []);
-
-  if (checkingAuth) {
-    return <div style={{padding:20}}>Checking authentication...</div>;
-  }
 
   return (
     <Router>
@@ -127,6 +88,12 @@ function App() {
               <Route path="branches/transfer-request" element={<MoveRequest user={user} />} />
               <Route path="branches/move-requests" element={<MoveRequestsList user={user} />} />
               <Route path="branches/transfer" element={<BranchTransfer user={user} />} />
+
+
+              {/* owner area */}
+              
+              
+              
             </Route>
 
             <Route path="/login" element={<Navigate to="/" replace />} />

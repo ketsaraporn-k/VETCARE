@@ -1,139 +1,69 @@
-// backEnd/controllers/userController.js
+// controllers/userController.js
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
-
 const JWT_SECRET = process.env.JWT_SECRET || 'petClinicSecretKey';
-const COOKIE_NAME = process.env.AUTH_COOKIE_NAME || 'vetcare_token';
-const COOKIE_MAX_AGE = 24 * 60 * 60 * 1000; // 1 day
 
 // REGISTER
 exports.register = async (req, res) => {
   try {
     const { username, password, name, email, phone, role, branchId } = req.body;
-    if (!username || !password || !name) return res.status(422).json({ error: 'username, password and name are required' });
-
     const existingUser = await User.findOne({ username });
     if (existingUser) return res.status(400).json({ error: 'Username already exists' });
 
-    // DON'T hash here — UserSchema.pre('save') will hash when saving
-    const newUser = new User({
-      username,
-      password,
-      name,
-      email,
-      phone,
-      role,
-      branchId,
-      createdBy: req.user?.id || null,
-      updatedBy: req.user?.id || null
-    });
-    await newUser.save();
-
-    const out = newUser.toJSON ? newUser.toJSON() : newUser;
-    return res.status(201).json({ message: 'User registered successfully', user: out });
+    const hashed = await bcrypt.hash(password, 10);
+    const newUser = await User.create({ username, password: hashed, name, email, phone, role, branchId });
+    res.status(201).json({ message: 'User registered successfully', user: newUser });
   } catch (err) {
-    console.error('register err', err);
-    return res.status(400).json({ error: err.message });
+    res.status(400).json({ error: err.message });
   }
 };
 
-// LOGIN (sets httpOnly cookie, returns sanitized user)
+// LOGIN
 exports.login = async (req, res) => {
   try {
     const { username, password } = req.body;
-    if (!username || !password) return res.status(422).json({ error: 'username and password required' });
-
-    // need to select password (schema has select:false)
-    const user = await User.findOne({ username }).select('+password');
+    const user = await User.findOne({ username });
     if (!user) return res.status(404).json({ error: 'User not found' });
 
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) return res.status(401).json({ error: 'Invalid password' });
 
-    const token = jwt.sign(
-      { id: user._id.toString(), role: user.role, branchId: user.branchId ? user.branchId.toString() : null },
-      JWT_SECRET,
-      { expiresIn: '1d' }
-    );
-
-    // set cookie (httpOnly) + return sanitized user (no token)
-    res.cookie(COOKIE_NAME, token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      maxAge: COOKIE_MAX_AGE
-    });
-
-    const safeUser = {
-      id: user._id,
-      username: user.username,
-      name: user.name,
-      role: user.role,
-      branchId: user.branchId || null
-    };
-
-    return res.json({ message: 'Login successful', user: safeUser });
+    const token = jwt.sign({ id: user._id, role: user.role, branchId: user.branchId }, JWT_SECRET, { expiresIn: '1d' });
+    res.json({ message: 'Login successful', token, user: { id: user._id, username: user.username, name: user.name, role: user.role } });
   } catch (err) {
-    console.error('login err', err);
-    return res.status(500).json({ error: err.message });
+    res.status(500).json({ error: err.message });
   }
 };
 
-// LOGOUT (clear cookie)
-exports.logout = async (req, res) => {
-  try {
-    const COOKIE_NAME = process.env.AUTH_COOKIE_NAME || 'vetcare_token';
-    // clear cookie (httpOnly)
-    res.clearCookie(COOKIE_NAME, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax'
-    });
-    return res.json({ message: 'Logged out' });
-  } catch (err) {
-    console.error('logout err:', err);
-    return res.status(500).json({ error: err.message });
-  }
-};
-
-// GET PROFILE (auth middleware should attach req.user)
+// GET PROFILE
 exports.getProfile = async (req, res) => {
   try {
-    const userId = req.user?.id || req.user?._id;
-    if (!userId) return res.status(401).json({ error: 'Unauthorized' });
-
-    const user = await User.findById(userId).select('-password');
+    const user = await User.findById(req.user.id).select('-password');
     if (!user) return res.status(404).json({ error: 'User not found' });
-    return res.json(user);
+    res.json(user);
   } catch (err) {
-    console.error('getProfile err', err);
-    return res.status(500).json({ error: err.message });
+    res.status(500).json({ error: err.message });
   }
 };
 
-// CRUD - createUser (admin use)
+// CRUD
 exports.createUser = async (req, res) => {
   try {
-    if (!req.body.password) return res.status(422).json({ error: 'password required' });
-    const payload = { ...req.body, createdBy: req.user?.id || null, updatedBy: req.user?.id || null };
-    const user = new User(payload);
-    await user.save();
-    const out = user.toJSON ? user.toJSON() : user;
-    return res.status(201).json(out);
+    const hashed = await bcrypt.hash(req.body.password, 10);
+    const user = await User.create({ ...req.body, password: hashed });
+    res.status(201).json(user);
   } catch (err) {
-    console.error('createUser err', err);
-    return res.status(400).json({ error: err.message });
+    res.status(400).json({ error: err.message });
   }
 };
 
 exports.getUsers = async (req, res) => {
   try {
     const users = await User.find().select('-password');
-    return res.json(users);
+    res.json(users);
   } catch (err) {
-    console.error('getUsers err', err);
-    return res.status(500).json({ error: err.message });
+    res.status(500).json({ error: err.message });
   }
 };
 
@@ -141,50 +71,41 @@ exports.getUserById = async (req, res) => {
   try {
     const user = await User.findById(req.params.id).select('-password');
     if (!user) return res.status(404).json({ error: 'User not found' });
-    return res.json(user);
+    res.json(user);
   } catch (err) {
-    console.error('getUserById err', err);
-    return res.status(500).json({ error: err.message });
+    res.status(500).json({ error: err.message });
   }
 };
 
 exports.updateUser = async (req, res) => {
   try {
     const { id } = req.params;
-    if (!id) return res.status(422).json({ error: 'id required' });
+    const updateData = { ...req.body };
 
-    const user = await User.findById(id);
-    if (!user) return res.status(404).json({ error: 'User not found' });
+    if (updateData.password) updateData.password = await bcrypt.hash(updateData.password, 10);
 
-    const updaterRole = req.user?.role;
-    let updates = { ...req.body };
-
-    if (updaterRole === 'owner') {
+    // จำกัด field ของ owner
+    if (req.user.role === 'owner') {
       const allowedFields = ['name', 'email', 'phone', 'password'];
-      Object.keys(updates).forEach(k => { if (!allowedFields.includes(k)) delete updates[k]; });
+      Object.keys(updateData).forEach(key => {
+        if (!allowedFields.includes(key)) delete updateData[key];
+      });
     }
 
-    Object.keys(updates).forEach(k => {
-      user[k] = updates[k];
-    });
-    user.updatedBy = req.user?.id || user.updatedBy || null;
+    const user = await User.findByIdAndUpdate(id, updateData, { new: true }).select('-password');
+    if (!user) return res.status(404).json({ error: 'User not found' });
 
-    await user.save(); // triggers pre-save hashing if password modified
-
-    const out = await User.findById(id).select('-password');
-    return res.json({ message: 'Profile updated successfully', user: out });
+    res.json({ message: 'Profile updated successfully', user });
   } catch (err) {
-    console.error('updateUser err', err);
-    return res.status(500).json({ error: err.message });
+    res.status(500).json({ error: err.message });
   }
 };
 
 exports.deleteUser = async (req, res) => {
   try {
     await User.findByIdAndDelete(req.params.id);
-    return res.json({ message: 'User deleted' });
+    res.json({ message: 'User deleted' });
   } catch (err) {
-    console.error('deleteUser err', err);
-    return res.status(500).json({ error: err.message });
+    res.status(500).json({ error: err.message });
   }
 };

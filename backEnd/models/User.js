@@ -173,29 +173,9 @@ UserSchema.methods.getPetAllergies = function(petId) {
   return pet ? (pet.drugAllergies || []) : [];
 };
 
-/* ==== Compatibility helpers for notifications (embedded) ==== */
-UserSchema.statics.createNotificationForUser = async function(userId, payload = {}) {
-  const UserModel = this;
-  if (!userId) throw new Error('userId required');
-  const { type = 'system', message = '', data = {}, status = 'unread' } = payload;
-  const user = await UserModel.findById(userId);
-  if (!user) throw new Error('User not found');
-  const n = { type, message, data, status, createdAt: new Date() };
-  user.notifications.push(n);
-  if (status === 'unread') user.unreadNotifications = (user.unreadNotifications || 0) + 1;
-  await user.save();
-  return user.notifications[user.notifications.length - 1];
-};
-
-/* ==== Optional: pet helpers (recommended) ==== */
-UserSchema.statics.createPetForOwner = async function(ownerId, petPayload = {}) {
-  const user = await this.findById(ownerId);
-  if (!user) throw new Error('Owner not found');
-  user.pets.push(petPayload);
-  await user.save();
-  return user.pets[user.pets.length - 1];
-};
-
-
+/* ---------- Indexes ---------- */
+UserSchema.index({ username: 1 }, { unique: true });
+UserSchema.index({ email: 1 }, { sparse: true });
+UserSchema.index({ role: 1, branchId: 1 });
 
 module.exports = mongoose.model('User', UserSchema);

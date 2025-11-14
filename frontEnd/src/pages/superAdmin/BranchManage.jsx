@@ -1,378 +1,308 @@
-// src/pages/superAdmin/BranchManage.jsx
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import api from "../../api/axiosConfig";
 import "./BranchManage.css";
 
-/**
- * BranchManage (improved) - full file to replace previous one
- *
- * Assumptions:
- * - api is axios instance configured with baseURL and withCredentials:true
- * - backend supports:
- *    GET  /api/branches? q=&page=&pageSize=
- *    GET  /api/branches/:id
- *    POST /api/branches
- *    PUT  /api/branches/:id
- *    DELETE /api/branches/:id
- *    GET  /api/users?role=branchAdmin  (or returns list of users)
- *
- * Notes:
- * - This file is defensive about different shapes of responses.
- * - It uses _id or id interchangeably.
- */
+const BRANCH_BASE = "/branches"; // adjust if needed
 
-function idOf(x) {
-  return x?._id || x?.id || x || "";
-}
-
-function ensureArrayFromResponse(res) {
-  if (!res) return [];
-  if (Array.isArray(res)) return res;
-  if (res.data && Array.isArray(res.data)) return res.data;
-  if (res.data && res.data.data && Array.isArray(res.data.data)) return res.data.data;
-  return [];
-}
-
-export default function BranchManage() {
+const BranchManage = () => {
   const [branches, setBranches] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
+  const [users, setUsers] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [newBranch, setNewBranch] = useState({
+    branchName: "",
+    address: "",
+    phone: "",
+    managerId: ""
+  });
 
-  // search & pagination
-  const [q, setQ] = useState("");
-  const [page, setPage] = useState(1);
-  const [pageSize] = useState(12);
-  const [total, setTotal] = useState(0);
+  // editing modal state
+  const [editing, setEditing] = useState(null); // { id, branchName, address, phone, managerId }
 
-  // managers dropdown
-  const [managers, setManagers] = useState([]);
-
-  // modals & forms
-  const [showForm, setShowForm] = useState(false);
-  const [editing, setEditing] = useState(null);
-  const [form, setForm] = useState({ branchName: "", addressBranch: "", phone: "", managerId: "" });
-
-  const [showDetail, setShowDetail] = useState(false);
-  const [detail, setDetail] = useState(null);
-
-  // fetch branches list (page & optional q)
-  const fetchBranches = async ({ page = 1, q = "" } = {}) => {
+  const fetchBranches = async () => {
     setLoading(true);
-    setError(null);
     try {
-      const res = await api.get("/api/branches", { params: { page, pageSize, q } });
-      // flexible parse
-      const data = ensureArrayFromResponse(res.data);
-      setBranches(data);
-      // total / page info
-      const totalFromRes = res.data?.total ?? res.data?.meta?.total ?? (Array.isArray(res.data) ? res.data.length : data.length);
-      setTotal(Number(totalFromRes || data.length || 0));
-      setPage(Number(res.data?.page || page));
+      const res = await api.get(BRANCH_BASE);
+      setBranches(res.data || []);
     } catch (err) {
-      console.error("fetchBranches err:", err);
-      setError(err?.response?.data?.error || err.message || "Unable to fetch branches");
+      console.error("fetchBranches err", err);
       setBranches([]);
-      setTotal(0);
     } finally {
       setLoading(false);
     }
   };
 
-  // fetch managers (branchAdmin)
-  const fetchManagers = async () => {
+  const fetchUsers = async () => {
     try {
-      const res = await api.get("/api/users", { params: { role: "branchAdmin" } });
-      const list = ensureArrayFromResponse(res.data);
-      setManagers(list);
+      const res = await api.get("/branchAdmin/users");
+      setUsers(res.data?.users || res.data || []);
     } catch (err) {
-      console.warn("fetchManagers err:", err);
-      // fallback: if endpoint not available, try all users
-      try {
-        const r2 = await api.get("/api/users");
-        setManagers(ensureArrayFromResponse(r2.data).filter(u => (u.role || "").toLowerCase().includes("branch")));
-      } catch (e) {
-        setManagers([]);
-      }
+      console.warn("fetchUsers failed", err);
+      setUsers([]);
     }
   };
 
   useEffect(() => {
-    fetchBranches({ page: 1, q: "" });
-    fetchManagers();
+    const init = async () => {
+      await fetchUsers();
+      await fetchBranches();
+    };
+    init();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const onSearch = (e) => {
-    const v = e.target.value;
-    setQ(v);
-    setPage(1);
-    fetchBranches({ page: 1, q: v });
+  const userMap = useMemo(() => {
+    const m = new Map();
+    users.forEach(u => m.set(u._id || u.id, u));
+    return m;
+  }, [users]);
+
+  const getManagerName = (managerId) => {
+    if (!managerId) return "-";
+    if (typeof managerId === "object") return managerId.username || managerId.name || "-";
+    const user = userMap.get(managerId);
+    if (user) return user.username || user.name || "-";
+    return managerId || "-";
   };
 
-  const openCreate = () => {
-    setEditing(null);
-    setForm({ branchName: "", addressBranch: "", phone: "", managerId: "" });
-    setShowForm(true);
-    setError(null);
-  };
-
-  const openEdit = (b) => {
-    setEditing(b);
-    setForm({
-      branchName: b.branchName || "",
-      addressBranch: b.addressBranch || "",
-      phone: b.phone || "",
-      managerId: idOf(b.managerId || b.manager) || ""
-    });
-    setShowForm(true);
-    setError(null);
-  };
-
-  const closeForm = () => {
-    setEditing(null);
-    setForm({ branchName: "", addressBranch: "", phone: "", managerId: "" });
-    setShowForm(false);
-  };
-
-  const submitForm = async (e) => {
-    e && e.preventDefault();
-    setError(null);
-    if (!form.branchName || form.branchName.trim().length < 2) {
-      setError("กรุณาระบุชื่อสาขา (อย่างน้อย 2 ตัวอักษร)");
-      return;
+  const handleCreate = async (e) => {
+    e.preventDefault();
+    if (!newBranch.branchName || !newBranch.branchName.trim()) {
+      return alert("Branch name is required");
     }
+
     try {
-      if (editing) {
-        const id = idOf(editing);
-        const res = await api.put(`/api/branches/${id}`, {
-          branchName: form.branchName,
-          addressBranch: form.addressBranch,
-          phone: form.phone,
-          managerId: form.managerId || null
-        });
-        // updated branch returned in many shapes
-        const updated = res.data || res.data?.branch || res.data?.data || res;
-        setBranches(prev => prev.map(x => (idOf(x) === id ? (updated || { ...x, ...form }) : x)));
-      } else {
-        const res = await api.post("/api/branches", {
-          branchName: form.branchName,
-          addressBranch: form.addressBranch,
-          phone: form.phone,
-          managerId: form.managerId || null
-        });
-        const created = res.data || res.data?.branch || res.data?.data || res;
-        setBranches(prev => [created, ...prev]);
+      const payload = {
+        branchName: newBranch.branchName,
+        address: newBranch.address || undefined,
+        phone: newBranch.phone || undefined,
+      };
+      if (newBranch.managerId && newBranch.managerId.trim() !== "") {
+        payload.managerId = newBranch.managerId;
       }
-      closeForm();
+      await api.post(BRANCH_BASE, payload);
+      setNewBranch({ branchName: "", address: "", phone: "", managerId: "" });
+      fetchBranches();
     } catch (err) {
-      console.error("submitForm err:", err);
-      setError(err?.response?.data?.error || err.message || "Save failed");
+      console.error("create branch err", err);
+      alert(err.response?.data?.error || "Failed to create branch");
     }
   };
 
-  const handleDelete = async (b) => {
-    const id = idOf(b);
-    if (!id) return;
-    if (!window.confirm(`ยืนยันการลบสาขา: ${b.branchName} ?`)) return;
+  const handleDelete = async (id) => {
+    if (!window.confirm("Delete this branch?")) return;
     try {
-      await api.delete(`/api/branches/${id}`);
-      setBranches(prev => prev.filter(x => idOf(x) !== id));
+      await api.delete(`${BRANCH_BASE}/${id}`);
+      fetchBranches();
     } catch (err) {
-      console.error("handleDelete err:", err);
-      alert(err?.response?.data?.error || err.message || "Delete failed");
+      console.error("delete branch err", err);
+      alert("Delete failed");
     }
   };
 
-  const viewDetail = async (b) => {
-    const id = idOf(b);
-    if (!id) return;
-    setDetail(null);
-    setShowDetail(true);
+  /**
+   * Handle update:
+   * - If managerId === "" -> user selected "No manager" -> set to null to remove manager relationship.
+   * - If managerId is omitted, don't touch it.
+   */
+  const handleUpdate = async (id, updates) => {
     try {
-      const res = await api.get(`/api/branches/${id}`);
-      const full = res.data || res.data?.branch || res.data?.data || res;
-      setDetail(full);
+      const payload = { ...updates };
+
+      // If managerId is empty string => explicitly set to null so backend can remove it.
+      if (payload.hasOwnProperty("managerId") && payload.managerId === "") {
+        payload.managerId = null;
+      }
+
+      // If the payload includes only unchanged or empty values, you might still send them --
+      // backend should handle partial updates (PATCH/PUT).
+      await api.put(`${BRANCH_BASE}/${id}`, payload);
+      fetchBranches();
+      setEditing(null);
     } catch (err) {
-      console.error("viewDetail err:", err);
-      setDetail({ error: err?.response?.data?.error || err.message || "Unable to load" });
+      console.error("update branch err", err);
+      alert(err.response?.data?.error || "Update failed");
     }
   };
 
-  // assign manager quick (optimistic)
-  const assignManager = async (branchId, managerId) => {
-    if (!branchId) return;
-    const idStr = String(branchId);
-    // optimistic update
-    setBranches(prev => prev.map(b => (String(idOf(b)) === idStr ? { ...b, managerId } : b)));
-    try {
-      const res = await api.put(`/api/branches/${branchId}`, { managerId: managerId || null });
-      const updated = res.data || res.data?.branch || res.data?.data || res;
-      setBranches(prev => prev.map(b => (String(idOf(b)) === idStr ? (updated || b) : b)));
-      if (detail && String(idOf(detail)) === idStr) setDetail(prev => ({ ...(prev || {}), managerId }));
-    } catch (err) {
-      console.error("assignManager err:", err);
-      alert(err?.response?.data?.error || err.message || "Assign failed");
-      // revert by re-fetching
-      fetchBranches({ page, q });
-    }
+  const openEditModal = (b) => {
+    setEditing({
+      id: b._id || b.id,
+      branchName: b.branchName || "",
+      address: b.address || "",
+      phone: b.phone || "",
+      // managerId may be object or id -> standardize to id string or "" (no manager)
+      managerId: (typeof b.managerId === "object" ? (b.managerId._id || b.managerId.id || "") : (b.managerId || ""))
+    });
   };
 
-  const goPage = (p) => {
-    const next = Math.max(1, p);
-    setPage(next);
-    fetchBranches({ page: next, q });
-  };
+  // Filter branch admins for selects (case-insensitive contains "branch")
+  const branchAdmins = users.filter(u => {
+    if (!u.role) return false;
+    return u.role.toString().toLowerCase().includes("branch");
+  });
 
-  const totalPages = Math.max(1, Math.ceil((total || branches.length) / pageSize));
+  if (loading) return <p className="bm-loading">Loading branches...</p>;
 
   return (
-    <div className="branch-manage-root">
-      <header className="bm-header">
-        <h2>Manage Branches</h2>
-        <div className="bm-actions">
-          <button className="btn" onClick={openCreate}>+ Create Branch</button>
-          <button className="btn ghost" onClick={() => fetchBranches({ page, q })}>Refresh</button>
+    <div className="bm-page">
+      <h2 className="bm-title">🏢 Branch Management</h2>
+
+      <div className="bm-layout">
+        <div className="bm-left">
+          <h3>All Branches</h3>
+
+          {branches.length === 0 ? (
+            <p>No branches found.</p>
+          ) : (
+            <table className="bm-table">
+              <thead>
+                <tr>
+                  <th>Name</th>
+                  <th>Address</th>
+                  <th>Phone</th>
+                  <th>Manager</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {branches.map((b) => (
+                  <tr key={b._id || b.id}>
+                    <td>{b.branchName}</td>
+                    <td>{b.address || "-"}</td>
+                    <td>{b.phone || "-"}</td>
+                    <td>{getManagerName(b.managerId)}</td>
+                    <td className="bm-actions">
+                      <button className="bm-btn bm-btn-delete" onClick={() => handleDelete(b._id || b.id)}>Delete</button>
+                      <button className="bm-btn bm-btn-edit" onClick={() => openEditModal(b)}>Edit</button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
         </div>
-      </header>
 
-      <div className="bm-controls">
-        <input className="bm-search" placeholder="Search branch name / address..." value={q} onChange={onSearch} />
-        <div className="bm-meta">{loading ? "Loading..." : `${total || branches.length} items`}</div>
-      </div>
-
-      {error && <div className="bm-error">{error}</div>}
-
-      <div className="bm-table-wrap">
-        <table className="bm-table">
-          <thead>
-            <tr>
-              <th>Name</th>
-              <th>Manager</th>
-              <th>Phone</th>
-              <th className="tcenter">Medicines</th>
-              <th className="tcenter">Schedules</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {(!branches || branches.length === 0) && !loading ? (
-              <tr><td colSpan={6} className="empty">No branches found</td></tr>
-            ) : branches.map(b => (
-              <tr key={idOf(b)}>
-                <td>{b.branchName}</td>
-                <td>
-                  <div className="manager-line">
-                    <div className="mgr-name">
-                      {b.managerName || (b.manager && (b.manager.name || b.manager.username)) || (typeof b.managerId === "string" && b.managerId ? "Assigned" : "—")}
-                    </div>
-                    <div>
-                      <select value={idOf(b.manager || b.managerId) || ""} onChange={(e) => assignManager(idOf(b), e.target.value)}>
-                        <option value="">— assign —</option>
-                        {managers.map(m => <option key={idOf(m)} value={idOf(m)}>{m.name || m.username}</option>)}
-                      </select>
-                    </div>
-                  </div>
-                </td>
-                <td>{b.phone || "-"}</td>
-                <td className="tcenter">{typeof b.medicinesCount !== "undefined" ? b.medicinesCount : (b.medicines ? b.medicines.length : "-")}</td>
-                <td className="tcenter">{typeof b.schedulesCount !== "undefined" ? b.schedulesCount : (b.schedules ? b.schedules.length : "-")}</td>
-                <td>
-                  <div className="actions-row">
-                    <button className="btn small" onClick={() => viewDetail(b)}>View</button>
-                    <button className="btn small" onClick={() => openEdit(b)}>Edit</button>
-                    <button className="btn small danger" onClick={() => handleDelete(b)}>Delete</button>
-                  </div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-
-      <div className="bm-pager">
-        <button className="btn" onClick={() => goPage(page - 1)} disabled={page <= 1}>Prev</button>
-        <div>Page {page} / {totalPages}</div>
-        <button className="btn" onClick={() => goPage(page + 1)} disabled={page >= totalPages}>Next</button>
-      </div>
-
-      {/* Form modal */}
-      {showForm && (
-        <div className="bm-modal-backdrop" onClick={closeForm}>
-          <form className="bm-modal" onClick={(e) => e.stopPropagation()} onSubmit={submitForm}>
-            <h3>{editing ? "Edit Branch" : "Create Branch"}</h3>
-
-            <label>Branch Name *</label>
-            <input value={form.branchName} onChange={(e) => setForm({ ...form, branchName: e.target.value })} required />
-
-            <label>Phone</label>
-            <input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
-
-            <label>Address</label>
-            <textarea value={form.addressBranch} onChange={(e) => setForm({ ...form, addressBranch: e.target.value })} rows={3} />
-
-            <label>Manager</label>
-            <select value={form.managerId || ""} onChange={(e) => setForm({ ...form, managerId: e.target.value })}>
-              <option value="">— none —</option>
-              {managers.map(m => <option key={idOf(m)} value={idOf(m)}>{m.name || m.username}</option>)}
+        <div className="bm-right">
+          <h3>Add New Branch</h3>
+          <form className="bm-form" onSubmit={handleCreate}>
+            <input
+              className="bm-input"
+              placeholder="Branch Name"
+              value={newBranch.branchName}
+              onChange={(e) => setNewBranch({ ...newBranch, branchName: e.target.value })}
+              required
+            />
+            <input
+              className="bm-input"
+              placeholder="Address"
+              value={newBranch.address}
+              onChange={(e) => setNewBranch({ ...newBranch, address: e.target.value })}
+            />
+            <input
+              className="bm-input"
+              placeholder="Phone"
+              value={newBranch.phone}
+              onChange={(e) => setNewBranch({ ...newBranch, phone: e.target.value })}
+            />
+            <select
+              className="bm-input"
+              value={newBranch.managerId}
+              onChange={(e) => setNewBranch({ ...newBranch, managerId: e.target.value })}
+            >
+              <option value="">-- Select manager (optional) --</option>
+              {branchAdmins.length === 0 && <option disabled>-- No branchAdmin users available --</option>}
+              {branchAdmins.map(u => (
+                <option key={u._id || u.id} value={u._id || u.id}>
+                  {u.username || u.name || u.email || (u._id || u.id)}
+                </option>
+              ))}
             </select>
-
-            <div className="modal-actions">
-              <button type="button" className="btn ghost" onClick={closeForm}>Cancel</button>
-              <button type="submit" className="btn">{editing ? "Save" : "Create"}</button>
-            </div>
+            <button className="bm-btn bm-btn-primary" type="submit" disabled={!newBranch.branchName.trim()}>Add Branch</button>
           </form>
         </div>
-      )}
+      </div>
 
-      {/* Detail modal */}
-      {showDetail && (
-        <div className="bm-modal-backdrop" onClick={() => setShowDetail(false)}>
-          <div className="bm-modal wide" onClick={(e) => e.stopPropagation()}>
-            <div className="detail-head">
-              <h3>{detail?.branchName || "Branch Detail"}</h3>
-              <div><button className="btn" onClick={() => setShowDetail(false)}>Close</button></div>
+      {/* Edit Modal */}
+      {editing && (
+        <div className="bm-modal-overlay">
+          <div className="bm-modal">
+            <h3>Edit Branch</h3>
+
+            <div className="bm-form">
+              <label className="bm-label">
+                Name
+                <input
+                  className="bm-input"
+                  value={editing.branchName}
+                  onChange={(e) => setEditing({ ...editing, branchName: e.target.value })}
+                />
+              </label>
+
+              <label className="bm-label">
+                Address
+                <input
+                  className="bm-input"
+                  value={editing.address}
+                  onChange={(e) => setEditing({ ...editing, address: e.target.value })}
+                />
+              </label>
+
+              <label className="bm-label">
+                Phone
+                <input
+                  className="bm-input"
+                  value={editing.phone}
+                  onChange={(e) => setEditing({ ...editing, phone: e.target.value })}
+                />
+              </label>
+
+              <label className="bm-label">
+                Manager
+                <select
+                  className="bm-input"
+                  value={editing.managerId}
+                  onChange={(e) => setEditing({ ...editing, managerId: e.target.value })}
+                >
+                  <option value="">-- No manager --</option>
+                  {branchAdmins.length === 0 && <option disabled>-- No branchAdmin users available --</option>}
+                  {branchAdmins.map(u => (
+                    <option key={u._id || u.id} value={u._id || u.id}>
+                      {u.username || u.name || u.email || (u._id || u.id)}
+                    </option>
+                  ))}
+                </select>
+                <div className="bm-note">เลือก <em>No manager</em> เพื่อปลดผู้จัดการออกจากสาขา</div>
+              </label>
+
+              <div className="bm-modal-actions">
+                <button className="bm-btn" onClick={() => setEditing(null)}>Cancel</button>
+                <button
+                  className="bm-btn bm-btn-primary"
+                  onClick={() => {
+                    // Ask for confirmation before saving
+                    const ok = window.confirm("Save changes to this branch?");
+                    if (!ok) return;
+
+                    // collect updates
+                    const updates = {
+                      branchName: editing.branchName,
+                      address: editing.address,
+                      phone: editing.phone,
+                      // If user chooses no manager -> value === "" -> handleUpdate will set to null
+                      managerId: editing.managerId
+                    };
+                    handleUpdate(editing.id, updates);
+                  }}
+                >
+                  Save
+                </button>
+              </div>
             </div>
-
-            {!detail && <div>Loading...</div>}
-            {detail && detail.error && <div className="bm-error">{detail.error}</div>}
-
-            {detail && !detail.error && (
-              <>
-                <div className="detail-row"><strong>Phone:</strong> {detail.phone || "-"}</div>
-                <div className="detail-row"><strong>Address:</strong> {detail.addressBranch || "-"}</div>
-                <div className="detail-row"><strong>Manager:</strong> {(detail.managerName || detail.manager?.name) || (detail.managerId ? detail.managerId : "-")}</div>
-
-                <hr />
-
-                <h4>Medicines ({(detail.medicines || []).length})</h4>
-                <div className="list-scroll">
-                  {(detail.medicines || []).map(m => (
-                    <div key={idOf(m)} className="list-item">
-                      <div className="li-left">{m.medicineName}</div>
-                      <div className="li-right">Stock: {m.stock ?? 0}</div>
-                      <div className="li-sub">Threshold: {m.lowStockThreshold ?? 5} • Alert: {m.lowStockAlert ? "Yes" : "No"}</div>
-                    </div>
-                  ))}
-                  {(!detail.medicines || detail.medicines.length === 0) && <div className="muted">No medicines</div>}
-                </div>
-
-                <hr />
-
-                <h4>Upcoming schedules</h4>
-                <div className="list-scroll">
-                  {(detail.schedules || []).slice(0, 12).map(s => (
-                    <div key={idOf(s)} className="list-item">
-                      <div className="li-left">{s.serviceType || "Appointment"} — {s.scheduledAt ? new Date(s.scheduledAt).toLocaleString() : "-"}</div>
-                      <div className="li-sub">{s.notes || ""}</div>
-                    </div>
-                  ))}
-                  {(!detail.schedules || detail.schedules.length === 0) && <div className="muted">No schedules</div>}
-                </div>
-              </>
-            )}
           </div>
         </div>
       )}
     </div>
   );
-}
+};
+
+export default BranchManage;

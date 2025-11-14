@@ -1,96 +1,66 @@
-// backEnd/routes/medicineRoutes.js
 const express = require('express');
 const router = express.Router();
-const Branch = require('../models/Branch');     // <- ../
+const Medicine = require('../models/Medicine');
+
+//Nori
+const controller = require('../controllers/medicineController');
 const auth = require('../middleware/auth');
 const role = require('../middleware/role');
-const controller = require('../controllers/medicineController');
 
-// CREATE medicine (สร้าง medicine ใน branch ของผู้ใช้ ถ้า req.user.branchId มี)
+// === CREATE ===
+// ✅ superAdmin + branchAdmin + staff สามารถสร้าง medicine ได้
 router.post('/', auth, role(['superAdmin', 'branchAdmin', 'staff']), async (req, res) => {
   try {
+    // ✅ ประกาศตัวแปร data ก่อน
     const data = { ...req.body };
-    const branchId = req.user.branchId || data.branchId;
-    if (!branchId) return res.status(422).json({ error: 'branchId required (or user must have branchId)' });
 
-    const branch = await Branch.findById(branchId);
-    if (!branch) return res.status(404).json({ error: 'Branch not found' });
+    // ถ้า user มี branchId ให้ใส่อัตโนมัติ
+    if (req.user.branchId) data.branchId = req.user.branchId;
 
-    const newMed = {
-      medicineName: data.medicineName,
-      stock: data.stock || 0,
-      unit: data.unit || 'pcs',
-      lowStockThreshold: data.lowStockThreshold || 5,
-      manufacturer: data.manufacturer || null,
-      category: data.category || null,
-      batches: data.batches || []
-    };
-    branch.medicines.push(newMed);
-    await branch.save();
-    const created = branch.medicines[branch.medicines.length - 1];
-    return res.status(201).json(created);
+    const item = await Medicine.create(data);
+    res.status(201).json(item);
   } catch (err) {
-    console.error('create medicine err', err);
-    return res.status(400).json({ error: err.message });
+    res.status(400).json({ error: err.message });
   }
 });
 
-// READ all medicines (optionally filter by branch)
+
+// === READ ALL ===
+// ✅ superAdmin + branchAdmin + staff เท่านั้น
 router.get('/', auth, role(['superAdmin', 'branchAdmin', 'staff']), async (req, res) => {
   try {
-    if (req.user.role && req.user.role.toLowerCase() === 'superadmin') {
-      // return all branch medicines merged (or return branches with medicines)
-      const branches = await Branch.find().select('branchName medicines');
-      return res.json(branches);
-    }
-    // non-super -> return only user's branch medicines
-    const branch = await Branch.findById(req.user.branchId).select('branchName medicines');
-    return res.json(branch ? [branch] : []);
+    const items = await Medicine.find();
+    res.json(items);
   } catch (err) {
-    console.error('list medicines err', err);
-    return res.status(500).json({ error: err.message });
+    res.status(500).json({ error: err.message });
   }
 });
 
-// READ one medicine by branchId + medId
-router.get('/:branchId/:medId', auth, role(['superAdmin', 'branchAdmin', 'staff']), async (req, res) => {
+// === READ ONE ===
+// ✅ superAdmin + branchAdmin + staff เท่านั้น
+router.get('/:id', auth, role(['superAdmin', 'branchAdmin', 'staff']), async (req, res) => {
   try {
-    const { branchId, medId } = req.params;
-    // if non-super, ensure branchId matches user's branch
-    if ((req.user.role || '').toLowerCase() !== 'superadmin' && String(req.user.branchId) !== String(branchId)) {
-      return res.status(403).json({ error: 'Permission denied' });
-    }
-    const branch = await Branch.findById(branchId).select('branchName medicines');
-    if (!branch) return res.status(404).json({ error: 'Branch not found' });
-    const medicine = branch.medicines.id(medId);
-    if (!medicine) return res.status(404).json({ error: 'Medicine not found' });
-    return res.json({ branch: { _id: branch._id, branchName: branch.branchName }, medicine });
+    const item = await Medicine.findById(req.params.id);
+    if (!item) return res.status(404).json({ error: 'Not found' });
+    res.json(item);
   } catch (err) {
-    console.error('get medicine err', err);
-    return res.status(500).json({ error: err.message });
+    res.status(500).json({ error: err.message });
   }
 });
 
-// UPDATE medicine (including updating stock or lowStockAlert)
-router.put('/:branchId/:medId', auth, role(['superAdmin', 'branchAdmin']), controller.updateMedicine)
+// === UPDATE (with stock alert) ===
+// 🔒 ใช้ role เดิม branchAdmin (ถ้าอยากแก้ก็ปรับตามต้องการ)
+router.put('/:id', auth, role(['superAdmin', 'branchAdmin']), controller.updateMedicine);
 
-// DELETE medicine
-router.delete('/:branchId/:medId', auth, role(['superAdmin', 'branchAdmin']), async (req, res) => {
+// === DELETE ===
+// 🔒 ใช้ role เดิม branchAdmin (ถ้าอยากแก้ก็ปรับตามต้องการ)
+router.delete('/:id', auth, role(['superAdmin', 'branchAdmin']), async (req, res) => {
   try {
-    const { branchId, medId } = req.params;
-    if ((req.user.role || '').toLowerCase() !== 'superadmin' && String(req.user.branchId) !== String(branchId)) {
-      return res.status(403).json({ error: 'Permission denied' });
-    }
-    const branch = await Branch.findById(branchId);
-    if (!branch) return res.status(404).json({ error: 'Branch not found' });
-    const med = branch.medicines.id(medId);
-    if (!med) return res.status(404).json({ error: 'Medicine not found' });
-    med.remove();
-    await branch.save();
-    return res.json({ message: 'Deleted successfully' });
+    const item = await Medicine.findByIdAndDelete(req.params.id);
+    if (!item) return res.status(404).json({ error: 'Not found' });
+    res.json({ message: 'Deleted successfully' });
   } catch (err) {
-    console.error('delete medicine err', err);
-    return res.status(500).json({ error: err.message });
+    res.status(500).json({ error: err.message });
   }
 });
 

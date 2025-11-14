@@ -1,4 +1,3 @@
-//backEnd/routes/vaccinationRoutes.js
 const express = require('express');
 const router = express.Router();
 const Vaccination = require('../models/Vaccination');
