@@ -37,7 +37,7 @@ const TreatmentSchema = new Schema({
 
 const VaccinationSchema = new Schema({
   branchId: { type: Schema.Types.ObjectId, ref: 'Branch', required: true },
-  medicineId: { type: Schema.Types.ObjectId, required: true },
+  medicineId: { type: Schema.Types.ObjectId, default: null },
   medicineNameSnapshot: { type: String, required: true },
   doseQty: { type: Number, default: 1 },
   batch: { type: String, default: null },

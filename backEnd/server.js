@@ -14,7 +14,7 @@ const app = express();
 app.use(
   cors({
     origin: process.env.CLIENT_ORIGIN || 'http://localhost:5173',
-    credentials: true // important for cookie auth
+    credentials: true, // important for cookie auth
   })
 );
 app.use(express.json({ limit: '10mb' }));
@@ -29,11 +29,10 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 /* --- Health check --- */
 app.get('/health', (_req, res) => res.json({ ok: true, ts: new Date() }));
 
-/* --- HTTP + Socket.IO (ต้องมาก่อน mount routes) --- */
+/* --- HTTP + Socket.IO --- */
 const server = http.createServer(app);
 const io = require('socket.io')(server, { cors: { origin: '*' } });
 
-/* inject io ให้ controllers/routes ใช้งานได้ผ่าน req.io */
 app.use((req, _res, next) => {
   req.io = io;
   next();
@@ -52,11 +51,13 @@ function safeRequire(relPath) {
 function isRouterLike(router) {
   return (
     typeof router === 'function' ||
-    (router && typeof router === 'object' && (typeof router.handle === 'function' || Array.isArray(router.stack)))
+    (router &&
+      typeof router === 'object' &&
+      (typeof router.handle === 'function' || Array.isArray(router.stack)))
   );
 }
 
-/* --- Declare mounts (แก้/เพิ่มตามไฟล์จริงของโปรเจกต์คุณ) --- */
+/* --- Declare mounts --- */
 const mounts = [
   // core
   { mountPoint: '/api/users',         relPath: './routes/userRoutes' },
@@ -64,34 +65,41 @@ const mounts = [
   { mountPoint: '/api/notifications', relPath: './routes/notificationRoutes' },
 
   // admin / nori
-  { mountPoint: '/api/admin',         relPath: './routes/userRoleActions' },
-  { mountPoint: '/api/branchAdmin',   relPath: './routes/branchAdminActions' },
-  { mountPoint: '/api/report',        relPath: './routes/report' },
-  { mountPoint: '/api/stat',          relPath: './routes/statistics' },
+  { mountPoint: '/api/admin',        relPath: './routes/userRoleActions' },
+  { mountPoint: '/api/branchAdmin',  relPath: './routes/branchAdminActions' },
+  { mountPoint: '/api/report',       relPath: './routes/report' },
+  { mountPoint: '/api/stat',         relPath: './routes/statistics' },
 
-  // optional notify route (only if file exists)
-  { mountPoint: '/api/notify',        relPath: './routes/notify' },
+  // optional notify route
+  { mountPoint: '/api/notify',       relPath: './routes/notify' },
 
-  // staff (subroutes)
-  { mountPoint: '/api/staff',         relPath: './staff/petmanage' },
-  { mountPoint: '/api/staff',         relPath: './staff/treatmentManage' },
+  //ยา (ใช้กับ TreatmentHistory)
+  { mountPoint: '/api/medicines',    relPath: './routes/medicineRoutes' },
+
+  // staff (ทุกอันใช้ /api/staff)
+  { mountPoint: '/api/staff',        relPath: './staff/petmanage' },
+  { mountPoint: '/api/staff',        relPath: './staff/treatmentManage' },
+  { mountPoint: '/api/staff',        relPath: './staff/scheduleManage' },
+  { mountPoint: '/api/staff',        relPath: './staff/clinicStaffManage' },
+
+  
   { mountPoint: '/api/staff/vaccinations', relPath: './staff/vaccinationManage' },
-  { mountPoint: '/api/staff/schedules',     relPath: './staff/scheduleManage' },
-  { mountPoint: '/api/staff-admin',  relPath: './staff/clinicStaffManage' },
 ];
 
-/* Mount safely: require each file, verify export is router-like, then app.use */
+/* Mount safely */
 for (const m of mounts) {
   const r = safeRequire(m.relPath);
   if (!r.ok) {
-    console.error(`❌ require failed for ${m.relPath}:`, r.error && r.error.message ? r.error.message : r.error);
-    // fail-fast so you see exact problem on startup
+    console.error(`❌ require failed for ${m.relPath}:`, r.error?.message || r.error);
     throw r.error;
   }
   const router = r.mod;
   if (!isRouterLike(router)) {
     console.error(`❌ Module ${m.relPath} is NOT an Express router/middleware.`);
-    console.error('Exported value (preview):', router && Object.keys ? Object.keys(router).slice(0,6) : router);
+    console.error(
+      'Exported value (preview):',
+      router && Object.keys ? Object.keys(router).slice(0, 6) : router
+    );
     throw new Error(`Module ${m.relPath} must export an Express router (module.exports = router).`);
   }
   console.log(`→ Mounting ${m.relPath} at ${m.mountPoint}`);
@@ -105,15 +113,16 @@ app.use((req, res) => {
 
 /* --- centralized error handler --- */
 app.use((err, _req, res, _next) => {
-  console.error('🔥 Unhandled error:', err && err.stack ? err.stack : err);
-  res.status(err && err.status ? err.status : 500).json({ error: err && err.message ? err.message : 'Server error' });
+  console.error('🔥 Unhandled error:', err?.stack || err);
+  res
+    .status(err && err.status ? err.status : 500)
+    .json({ error: err && err.message ? err.message : 'Server error' });
 });
 
 /* --- Start server --- */
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => console.log(`🚀 Server + Socket.IO running on :${PORT}`));
 
-/* --- Optional graceful shutdown --- */
 process.on('SIGINT', () => {
   console.log('SIGINT — shutting down');
   server.close(() => process.exit(0));

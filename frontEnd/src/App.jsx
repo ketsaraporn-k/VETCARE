@@ -1,5 +1,5 @@
 // src/App.jsx
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 import api from "./api/axiosConfig";
 
@@ -11,6 +11,11 @@ import Profile from "./pages/OwnerProfile.jsx";
 import Appointments from "./pages/OwnerAppointments.jsx";
 
 import Auth from "./components/Auth";
+//Staff/Admin/SuperAdmin 
+// import StaffDashboard from "./pages/StaffDashboard";
+import StaffPets from "./pages/Pets.jsx";
+import StaffPetDetail from "./pages/PetDetail.jsx";
+import StaffAppointments from "./pages/StaffAppointments.jsx"; 
 import Inventory from "./pages/Inventory";
 import CashFlow from "./pages/CashFlow";
 import ConsolidatedView from "./pages/ConsolidatedView";
@@ -37,6 +42,9 @@ import MainLayout from "./layout/MainLayout";
 function App() {
   const [user, setUser] = useState(null);
   const [checkingAuth, setCheckingAuth] = useState(true);
+
+  const role = useMemo(() => String(user?.role || "").toLowerCase(), [user]);
+  const isOwner = role === "owner";
 
   const handleLogin = (userData) => {
     setUser(userData);
@@ -103,11 +111,22 @@ function App() {
         ) : (
           <>
             <Route path="/" element={<MainLayout user={user} onLogout={handleLogout} />}>
+              
               <Route index element={<Dashboard user={user} />} />
-              <Route path="pets" element={<Pets user={user} />} />
-              <Route path="pet-detail/:id" element={<PetDetail user={user} />} />
+
+              {/* Pets list */}
+              <Route path="pets" element={isOwner ? <OwnerPets user={user} /> : <StaffPets user={user} />} />
+
+              {/* Pet detail (อย่าซ้ำเส้นทาง) */}
+              {isOwner ? (
+                <Route path="pet-detail/:id" element={<OwnerPetDetail user={user} />} />
+              ) : (
+                <Route path="pet-detail/:ownerId/:petId" element={<StaffPetDetail user={user} />} />
+              )}
+
+              {/* อื่น ๆ */}
               <Route path="profile" element={<Profile user={user} />} />
-              <Route path="appointments" element={<Appointments user={user} />} />
+              <Route path="appointments" element={ isOwner ? (<OwnerAppointments user={user} />) : (<StaffAppointments user={user} />)}/>
               <Route path="inventory" element={<Inventory user={user} />} />
               <Route path="cash" element={<CashFlow user={user} />} />
               <Route path="/consolidated" element={<ConsolidatedView />} />

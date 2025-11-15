@@ -1,23 +1,21 @@
 // backEnd/staff/vaccinationManage.js
 const express = require("express");
 const mongoose = require("mongoose");
+const auth = require("../middleware/auth");
+const role = require("../middleware/role");
+const { assertBranch, canSeeAll } = require("../middleware/scope");
 const User = require("../models/User");
 const Branch = require("../models/Branch");
-const Notification = (() => { try { return require("../models/Notification"); } catch(e){ return null; } })();
-const auth = require("../middleware/auth");
+const Notification = (() => {
+  try {
+    return require("../models/Notification");
+  } catch (e) {
+    return null;
+  }
+})();
 
 const router = express.Router();
-const isOid = v => mongoose.isValidObjectId(String(v || ""));
-const isSuper = role => String(role || "").toLowerCase() === "superadmin";
-
-function checkRoleBranch(req, roles = []) {
-  const user = req.user || {};
-  const role = user.role || "guest";
-  if (!roles.includes(role) && !isSuper(role)) return { ok: false, error: "ไม่มีสิทธิ์เข้าถึง" };
-  const reqBranch = req.body?.branchId || req.query?.branchId || req.params?.branchId;
-  if (!isSuper(role) && user.branchId && reqBranch && String(user.branchId) !== String(reqBranch)) return { ok: false, error: "เข้าถึงได้เฉพาะสาขาของตนเอง" };
-  return { ok: true };
-}
+const isOid = (v) => mongoose.isValidObjectId(String(v || ""));
 
 function toDateOrNull(v, fieldName) {
   if (v == null) return null;
@@ -30,91 +28,288 @@ function toDateOrNull(v, fieldName) {
   return d;
 }
 
-// POST /:ownerId/:petId/vaccinations
-router.post("/:ownerId/:petId", auth, async (req, res) => {
-  const chk = checkRoleBranch(req, ["staff", "branchAdmin"]);
-  if (!chk.ok) return res.status(403).json({ error: chk.error });
+// POST /api/staff/vaccinations/:ownerId/:petId
+router.post(
+  "/:ownerId/:petId",
+  auth,
+  role(["staff", "branchAdmin", "doctor", "superAdmin"]),
+  async (req, res) => {
+    try {
+      const { ownerId, petId } = req.params;
+      if (!isOid(ownerId) || !isOid(petId)) {
+        return res.status(400).json({ error: "Invalid id(s)" });
+      }
 
-  try {
-    const { ownerId, petId } = req.params;
-    if (!isOid(ownerId) || !isOid(petId)) return res.status(400).json({ error: "Invalid id(s)" });
+      const owner = await User.findById(ownerId);
+      if (!owner) return res.status(404).json({ error: "Owner not found" });
 
-    const owner = await User.findById(ownerId);
-    if (!owner) return res.status(404).json({ error: "Owner not found" });
+      const pet = owner.pets.id(petId);
+      if (!pet) return res.status(404).json({ error: "Pet not found" });
 
-    const pet = owner.pets.id(petId);
-    if (!pet) return res.status(404).json({ error: "Pet not found" });
+      const branchId = canSeeAll(req)
+        ? req.body.branchId || owner.branchId || req.user.branchId
+        : req.user.branchId;
 
-    const branchId = isSuper(req.user.role) ? (req.body.branchId || owner.branchId || req.user.branchId) : req.user.branchId;
-    if (!branchId) return res.status(400).json({ error: "branchId missing" });
-    const branch = await Branch.findById(branchId);
-    if (!branch) return res.status(404).json({ error: "Branch not found" });
+      if (!branchId) return res.status(400).json({ error: "branchId missing" });
 
-    const vaccineTypeRaw = (req.body.vaccineType || req.body.vaccineName || "").toString().trim();
-    if (!vaccineTypeRaw) return res.status(400).json({ error: "vaccineType required" });
+      const branchCheck = assertBranch(req, branchId);
+      if (!branchCheck.ok) {
+        return res.status(403).json({ error: branchCheck.error });
+      }
 
-    const dateGiven = req.body.dateGiven ? toDateOrNull(req.body.dateGiven, "dateGiven") : new Date();
-    const nextDueDate = req.body.nextDueDate ? toDateOrNull(req.body.nextDueDate, "nextDueDate") : null;
+      const branch = await Branch.findById(branchId);
+      if (!branch) return res.status(404).json({ error: "Branch not found" });
 
-    const v = {
-      branchId,
-      medicineId: req.body.medicineId || null,
-      medicineNameSnapshot: req.body.vaccineName || vaccineTypeRaw,
-      doseQty: Number(req.body.doseQty || 1),
-      batch: req.body.batch || null,
-      expiryDate: req.body.expiryDate ? toDateOrNull(req.body.expiryDate, "expiryDate") : null,
-      dateGiven,
-      nextDueDate,
-      staffId: req.user.id || null,
-      attachments: Array.isArray(req.body.attachments) ? req.body.attachments : []
-    };
+      const vaccineTypeRaw = (
+        req.body.vaccineType ||
+        req.body.vaccineName ||
+        ""
+      )
+        .toString()
+        .trim();
+      if (!vaccineTypeRaw) {
+        return res.status(400).json({ error: "vaccineType required" });
+      }
 
-    pet.vaccinations.push(v);
-    await owner.save();
+      const dateGiven = req.body.dateGiven
+        ? toDateOrNull(req.body.dateGiven, "dateGiven")
+        : new Date();
+      const nextDueDate = req.body.nextDueDate
+        ? toDateOrNull(req.body.nextDueDate, "nextDueDate")
+        : null;
 
-    const newVac = pet.vaccinations[pet.vaccinations.length - 1];
+      const v = {
+        branchId,
+        vaccineType: vaccineTypeRaw,
+        medicineId: req.body.medicineId || null,
+        medicineNameSnapshot: req.body.vaccineName || vaccineTypeRaw,
+        doseQty: Number(req.body.doseQty || 1),
+        batch: req.body.batch || null,
+        note: req.body.note || "",
+        expiryDate: req.body.expiryDate
+          ? toDateOrNull(req.body.expiryDate, "expiryDate")
+          : null,
+        dateGiven,
+        nextDueDate,
+        staffId: req.user.id || null,
+        attachments: Array.isArray(req.body.attachments)
+          ? req.body.attachments
+          : [],
+      };
 
-    if (newVac.nextDueDate && Notification) {
-      try {
-        await Notification.create({
-          userId: owner._id,
-          message: `นัดฉีดวัคซีนของ ${pet.name} กำหนดวันที่ ${newVac.nextDueDate.toISOString()}`,
-          type: 'vaccine',
-          data: { petId: pet._id, nextDueDate: newVac.nextDueDate }
-        });
-      } catch (e) { console.warn('notif failed', e); }
+      pet.vaccinations.push(v);
+      await owner.save();
+
+      const newVac = pet.vaccinations[pet.vaccinations.length - 1];
+
+      if (newVac.nextDueDate && Notification) {
+        try {
+          await Notification.create({
+            userId: owner._id,
+            message: `นัดฉีดวัคซีนของ ${pet.name} กำหนดวันที่ ${newVac.nextDueDate.toISOString()}`,
+            type: "vaccine",
+            data: { petId: pet._id, nextDueDate: newVac.nextDueDate },
+          });
+        } catch (e) {
+          console.warn("notif failed", e);
+        }
+      }
+
+      res.status(201).json(newVac);
+    } catch (err) {
+      console.error("add vaccination err", err);
+      const code = err.statusCode || 500;
+      res.status(code).json({ error: err.message || "SERVER_ERROR" });
     }
-
-    res.status(201).json(newVac);
-  } catch (err) {
-    console.error("add vaccination err", err);
-    const code = err.statusCode || 500;
-    res.status(code).json({ error: err.message || "SERVER_ERROR" });
   }
-});
+);
 
-// GET vaccinations by pet -> GET /:ownerId/:petId
-router.get("/:ownerId/:petId", auth, async (req, res) => {
-  const chk = checkRoleBranch(req, ["staff", "branchAdmin"]);
-  if (!chk.ok) return res.status(403).json({ error: chk.error });
+// GET /api/staff/vaccinations/:ownerId/:petId
+router.get(
+  "/:ownerId/:petId",
+  auth,
+  role(["staff", "branchAdmin", "doctor", "superAdmin"]),
+  async (req, res) => {
+    try {
+      const { ownerId, petId } = req.params;
+      if (!isOid(ownerId) || !isOid(petId)) {
+        return res.status(400).json({ error: "Invalid id(s)" });
+      }
 
-  try {
-    const { ownerId, petId } = req.params;
-    if (!isOid(ownerId) || !isOid(petId)) return res.status(400).json({ error: "Invalid id(s)" });
+      const owner = await User.findById(ownerId)
+        .select("pets name branchId")
+        .lean();
+      if (!owner) return res.status(404).json({ error: "Owner not found" });
 
-    const owner = await User.findById(ownerId).select("pets name branchId").lean();
-    if (!owner) return res.status(404).json({ error: "Owner not found" });
-    const pet = (owner.pets || []).find(p => String(p._id) === String(petId));
-    if (!pet) return res.status(404).json({ error: "Pet not found" });
+      const branchCheck = assertBranch(req, owner.branchId);
+      if (!branchCheck.ok) {
+        return res.status(403).json({ error: branchCheck.error });
+      }
 
-    if (!isSuper(req.user.role) && req.user.branchId && String(req.user.branchId) !== String(owner.branchId)) return res.status(403).json({ error: "Different branch" });
+      const pet = (owner.pets || []).find(
+        (p) => String(p._id) === String(petId)
+      );
+      if (!pet) return res.status(404).json({ error: "Pet not found" });
 
-    const vaccinations = (pet.vaccinations || []).sort((a,b) => new Date(b.dateGiven) - new Date(a.dateGiven));
-    res.json({ pet: { id: pet._id, name: pet.name }, owner: { id: owner._id, name: owner.name }, vaccinations });
-  } catch (err) {
-    console.error("get vacs err", err);
-    res.status(500).json({ error: "SERVER_ERROR" });
+      const vaccinations = (pet.vaccinations || []).sort(
+        (a, b) => new Date(b.dateGiven) - new Date(a.dateGiven)
+      );
+
+      res.json({
+        pet: { id: pet._id, name: pet.name },
+        owner: { id: owner._id, name: owner.name },
+        vaccinations,
+      });
+    } catch (err) {
+      console.error("get vacs err", err);
+      res.status(500).json({ error: "SERVER_ERROR" });
+    }
   }
-});
+);
+
+// GET /api/staff/vaccinations
+router.get(
+  "/",
+  auth,
+  role(["staff", "branchAdmin", "doctor", "superAdmin"]),
+  async (req, res) => {
+    try {
+      const wantAll = String(req.query.all || "") === "1" && canSeeAll(req);
+      const branchId = req.query.branchId;
+
+      if (!wantAll) {
+        if (!branchId || !isOid(branchId)) {
+          return res
+            .status(400)
+            .json({ error: "branchId invalid or missing" });
+        }
+
+        const branchCheck = assertBranch(req, branchId);
+        if (!branchCheck.ok) {
+          return res.status(403).json({ error: branchCheck.error });
+        }
+
+        const users = await User.find({ branchId })
+          .select("username name pets")
+          .lean();
+
+        const rows = [];
+        users.forEach((u) => {
+          (u.pets || []).forEach((p) => {
+            (p.vaccinations || []).forEach((v) => {
+              if (!v) return;
+              if (!v.branchId || String(v.branchId) === String(branchId)) {
+                rows.push({
+                  vaccination: v,
+                  pet: { id: p._id, name: p.name },
+                  owner: {
+                    id: u._id,
+                    username: u.username,
+                    name: u.name,
+                  },
+                });
+              }
+            });
+          });
+        });
+
+        rows.sort(
+          (a, b) =>
+            new Date(b.vaccination.dateGiven) -
+            new Date(a.vaccination.dateGiven)
+        );
+
+        return res.json({
+          scope: "branch",
+          branchId,
+          total: rows.length,
+          data: rows,
+        });
+      }
+
+      const usersAll = await User.find({})
+        .select("username name pets branchId")
+        .lean();
+
+      const rowsAll = [];
+      usersAll.forEach((u) => {
+        (u.pets || []).forEach((p) => {
+          (p.vaccinations || []).forEach((v) => {
+            if (!v) return;
+            rowsAll.push({
+              vaccination: v,
+              pet: { id: p._id, name: p.name },
+              owner: {
+                id: u._id,
+                username: u.username,
+                name: u.name,
+              },
+              branchId: u.branchId || null,
+            });
+          });
+        });
+      });
+
+      rowsAll.sort(
+        (a, b) =>
+          new Date(b.vaccination.dateGiven) -
+          new Date(a.vaccination.dateGiven)
+      );
+
+      return res.json({ scope: "all", total: rowsAll.length, data: rowsAll });
+    } catch (err) {
+      console.error("list vacs err", err);
+      res.status(500).json({ error: "SERVER_ERROR" });
+    }
+  }
+);
+
+// DELETE /api/staff/vaccinations/:ownerId/:petId/:vacId
+router.delete(
+  "/:ownerId/:petId/:vacId",
+  auth,
+  role(["staff", "branchAdmin", "doctor", "superAdmin"]),
+  async (req, res) => {
+    try {
+      const { ownerId, petId, vacId } = req.params;
+
+      // validate ids ชัดเจน
+      const isOid = (v) => mongoose.isValidObjectId(String(v || ""));
+      if (![ownerId, petId, vacId].every(isOid)) {
+        return res.status(400).json({ error: "Invalid id(s)" });
+      }
+
+      const owner = await User.findById(ownerId);
+      if (!owner) return res.status(404).json({ error: "Owner not found" });
+
+      // สิทธิ์สาขา
+      const branchCheck = assertBranch(req, owner.branchId);
+      if (!branchCheck.ok) {
+        return res.status(403).json({ error: branchCheck.error });
+      }
+
+      const pet = owner.pets.id(petId);
+      if (!pet) return res.status(404).json({ error: "Pet not found" });
+
+      // หา vaccination
+      const idx = (pet.vaccinations || []).findIndex(
+        (v) => String(v._id) === String(vacId)
+      );
+      if (idx === -1) {
+        return res.status(404).json({ error: "Vaccination not found" });
+      }
+
+      // ลบแบบ splice เพื่อเลี่ยงปัญหา remove/deleteOne บางเวอร์ชัน
+      pet.vaccinations.splice(idx, 1);
+
+      await owner.save(); // persist
+
+      return res.json({ message: "Deleted", id: vacId });
+    } catch (err) {
+      console.error("delete vaccination err:", err);
+      return res.status(500).json({ error: err.message || "SERVER_ERROR" });
+    }
+  }
+);
 
 module.exports = router;
