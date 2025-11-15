@@ -54,8 +54,5 @@ const BranchSchema = new Schema({
   timestamps: true
 });
 
-/* ---------- Indexes ---------- */
-BranchSchema.index({ 'medicines.medicineName': 1 });
-BranchSchema.index({ 'schedules.scheduledAt': 1 });
 
 module.exports = mongoose.model('Branch', BranchSchema);

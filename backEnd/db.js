@@ -2,12 +2,18 @@
 const mongoose = require('mongoose');
 require('dotenv').config();
 
-mongoose.connect(process.env.MONGO_URI || 'mongodb://localhost:27017/petClinic', {
-  useNewUrlParser: true,
-  useUnifiedTopology: true,
-});
+const MONGO_URI = process.env.MONGO_URI || 'mongodb://localhost:27017/petClinic';
 
-mongoose.connection.on('connected', () => console.log('✅ MongoDB Connected'));
-mongoose.connection.on('error', (err) => console.error('❌ MongoDB Error:', err));
+mongoose.set('strictQuery', true);
+
+mongoose.connect(MONGO_URI)
+  .then(() => console.log('✅ MongoDB Connected:', MONGO_URI))
+  .catch(err => console.error('❌ MongoDB Error:', err));
+
+process.on('SIGINT', async () => {
+  await mongoose.connection.close();
+  console.log('🧹 MongoDB connection closed on app termination');
+  process.exit(0);
+});
 
 module.exports = mongoose;

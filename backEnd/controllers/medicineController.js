@@ -1,62 +1,68 @@
-const Medicine = require('../models/Medicine');
-const Notification = require('../models/Notification');
+// backEnd/controllers/medicineController.js
+const mongoose = require('mongoose');
+const Branch = require('../models/Branch');
 const User = require('../models/User');
+const { createNotification } = require('../utils/notify');
 
 module.exports.updateMedicine = async (req, res) => {
   try {
-    const { id } = req.params;
+    const { branchId, medId } = req.params; // expect route: /branches/:branchId/medicines/:medId
     const { change, setQuantity, reorderQty } = req.body;
 
-    const medicine = await Medicine.findById(id);
-    if (!medicine) return res.status(404).json({ message: 'Not found' });
-
-    // 1️⃣ คำนวณจำนวนใหม่
-    if (typeof change === "number") {
-      medicine.quantity = (medicine.quantity ?? 0) + change;
-    }
-    if (typeof setQuantity === "number") {
-      medicine.quantity = setQuantity;
-    }
-    if (typeof reorderQty === "number") {
-      medicine.reorderQty = reorderQty;
+    if (!mongoose.Types.ObjectId.isValid(branchId) || !mongoose.Types.ObjectId.isValid(medId)) {
+      return res.status(400).json({ message: 'Invalid id(s)' });
     }
 
-    // 2️⃣ ตรวจสอบสถานะ Low Stock
-    const threshold = medicine.reorderQty ?? 5;
+    const branch = await Branch.findById(branchId);
+    if (!branch) return res.status(404).json({ message: 'Branch not found' });
 
-    if (medicine.quantity <= threshold) {
-      medicine.lowStockAlert = true;
+    const medicine = branch.medicines.id(medId);
+    if (!medicine) return res.status(404).json({ message: 'Medicine not found in branch' });
 
-      // 🔔 แจ้งเตือนเมื่อยาใกล้หมด (เฉพาะตอนที่ยังไม่เคยเตือน)
-      const branchAdmin = await User.findOne({
-        branchId: medicine.branchId,
-        role: 'branchAdmin'
-      });
+    // 1) ปรับจำนวน
+    if (typeof change === 'number') {
+      medicine.stock = (medicine.stock || 0) + change;
+    }
+    if (typeof setQuantity === 'number') {
+      medicine.stock = setQuantity;
+    }
+    if (typeof reorderQty === 'number') {
+      medicine.lowStockThreshold = reorderQty;
+    }
 
-      if (branchAdmin) {
-        await Notification.create({
-          userId: branchAdmin._id,
-          message: `ยาใกล้หมด: ${medicine.name} (เหลือ ${medicine.quantity})`,
-          type: 'stock'
-        });
-        console.log(`⚠️ แจ้งเตือนยาใกล้หมด: ${medicine.name}`);
+    // 2) ตรวจ low stock
+    const threshold = (typeof medicine.lowStockThreshold === 'number') ? medicine.lowStockThreshold : 5;
+
+    if ((medicine.stock || 0) <= threshold) {
+      if (!medicine.lowStockAlert) {
+        medicine.lowStockAlert = true;
+        // notify branchAdmin(s)
+        try {
+          const branchAdmins = await User.find({ branchId: branch._id, role: 'branchAdmin' }).select('_id username name').lean();
+          const recipients = (branchAdmins && branchAdmins.length) ? branchAdmins.map(b => b._id) : [req.user && (req.user.id || req.user._id)];
+
+          await createNotification(recipients, {
+            type: 'stock',
+            message: `ยาใกล้หมด: ${medicine.medicineName} ที่ ${branch.branchName} (เหลือ ${medicine.stock})`,
+            data: { branchId: branch._id.toString(), medId: medicine._id.toString() }
+          });
+        } catch (e) {
+          console.warn('notif create failed', e);
+        }
       }
-
     } else {
-      // ✅ ถ้ามีของมากพอ → ปิด alert อัตโนมัติ
-      if (medicine.lowStockAlert === true) {
-        console.log(`✅ ยาเติมแล้ว: ${medicine.name}, ปิดการแจ้งเตือน`);
-      }
-      medicine.lowStockAlert = false;
+      // ถ้าเติมแล้ว ให้ปิด flag
+      if (medicine.lowStockAlert) medicine.lowStockAlert = false;
     }
 
-    medicine.updatedAt = new Date();
-    const updated = await medicine.save();
+    medicine.updatedAtMedicine = new Date();
+    await branch.save();
 
-    res.json(updated);
-
+    // return the updated subdoc (convert to plain object)
+    const updatedMed = branch.medicines.id(medId).toObject();
+    return res.json(updatedMed);
   } catch (err) {
-    console.error("updateMedicine error:", err);
-    res.status(500).json({ error: err.message });
+    console.error('updateMedicine error:', err);
+    return res.status(500).json({ error: err.message });
   }
 };

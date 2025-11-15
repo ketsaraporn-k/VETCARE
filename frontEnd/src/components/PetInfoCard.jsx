@@ -1,8 +1,12 @@
+// src/components/PetInfoCard.jsx
 import React from "react";
 import "./PetInfoCard.css";
 
-const PetInfoCard = ({ pet }) => {
+const PetInfoCard = ({ pet, owner }) => {
   if (!pet) return null;
+
+  // owner prop can be string or object { id, name, username }
+  const ownerName = owner?.name || owner?.username || pet.owner?.name || pet.owner || "—";
 
   return (
     <div className="pet-card">
@@ -14,10 +18,10 @@ const PetInfoCard = ({ pet }) => {
 
       <div className="pet-card-info">
         <h2>{pet.name}</h2>
-        <p><strong>Species:</strong> {pet.species}</p>
-        <p><strong>Breed:</strong> {pet.breed}</p>
-        <p><strong>Age:</strong> {pet.age} years</p>
-        <p><strong>Owner:</strong> {pet.owner}</p>
+        <p><strong>Species:</strong> {pet.species || "—"}</p>
+        <p><strong>Breed:</strong> {pet.breed || "—"}</p>
+        <p><strong>Age:</strong> {pet.age || "—"}</p>
+        <p><strong>Owner:</strong> {ownerName}</p>
       </div>
     </div>
   );

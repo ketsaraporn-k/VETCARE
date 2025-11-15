@@ -1,4 +1,4 @@
-// backEnd/routes/noriApi/userRoleActions.js
+// backEnd/routes/userRoleActions.js
 const express = require('express');
 const router = express.Router();
 const User = require('../models/User');
