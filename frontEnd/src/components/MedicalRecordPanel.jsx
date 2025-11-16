@@ -1,60 +1,44 @@
 // src/components/MedicalRecordPanel.jsx
-import React, { useEffect, useState } from "react";
-import api from "../api/axiosConfig";
+import React from "react";
 import "./MedicalRecordPanel.css";
 
-const MedicalRecordPanel = ({ petId }) => {
-  const [treatments, setTreatments] = useState([]);
-  const [vaccinations, setVaccinations] = useState([]);
-  const [loading, setLoading] = useState(true);
+const MedicalRecordPanel = ({ pet }) => {
+  if (!pet) return <p>No medical records available.</p>;
 
-  useEffect(() => {
-    if (!petId) return;
-    let cancelled = false;
-    const load = async () => {
-      setLoading(true);
-      try {
-        // staff endpoints (mounted at /api/staff)
-        const [tRes, vRes] = await Promise.allSettled([
-          api.get(`/staff/treatments/${petId}`),
-          api.get(`/staff/vaccinations/${petId}`)
-        ]);
-
-        if (!cancelled) {
-          if (tRes.status === "fulfilled") setTreatments(tRes.value.data || []);
-          if (vRes.status === "fulfilled") setVaccinations(vRes.value.data || []);
-        }
-      } catch (err) {
-        console.error("Error fetching medical records:", err);
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    };
-    load();
-    return () => { cancelled = true; };
-  }, [petId]);
-
-  if (!petId) return <p>No pet selected.</p>;
-  if (loading) return <p>Loading medical records...</p>;
+  const { treatments = [], vaccinations = [], drugAllergies = [] } = pet;
 
   return (
-    <div className="record-panel">
-      <h3>Medical History</h3>
+    <div className="medical-record-panel">
+      <h3>Medical Records for {pet.name}</h3>
 
-      <section>
+      {/* Treatments */}
+      <section className="treatments-section">
         <h4>Treatments</h4>
-        {treatments.length === 0 ? <p className="no-records">No treatment records.</p> : (
-          <table className="record-table">
+        {treatments.length === 0 ? (
+          <p>No treatment records.</p>
+        ) : (
+          <table className="records-table">
             <thead>
-              <tr><th>Date</th><th>Diagnosis</th><th>Treatment</th><th>Staff</th></tr>
+              <tr>
+                <th>Date</th>
+                <th>Branch</th>
+                <th>Symptoms</th>
+                <th>Diagnosis</th>
+                <th>Medicine</th>
+                <th>Quantity</th>
+                <th>Notes</th>
+              </tr>
             </thead>
             <tbody>
-              {treatments.map((t) => (
-                <tr key={t._id || t.id || Math.random()}>
-                  <td>{t.treatmentDate ? new Date(t.treatmentDate).toLocaleString() : (t.date || "—")}</td>
-                  <td>{t.diagnosis || t.symptoms || "—"}</td>
-                  <td>{t.notes || t.prescription || t.medicineNameSnapshot || "—"}</td>
-                  <td>{(t.staffId && (t.staffId.name || t.staffId)) || "—"}</td>
+              {treatments.map(t => (
+                <tr key={t._id}>
+                  <td>{new Date(t.treatmentDate).toLocaleDateString()}</td>
+                  <td>{t.branchId}</td>
+                  <td>{t.symptoms}</td>
+                  <td>{t.diagnosis}</td>
+                  <td>{t.medicineNameSnapshot}</td>
+                  <td>{t.quantityUsed}</td>
+                  <td>{t.notes || "-"}</td>
                 </tr>
               ))}
             </tbody>
@@ -62,20 +46,61 @@ const MedicalRecordPanel = ({ petId }) => {
         )}
       </section>
 
-      <section style={{ marginTop: 16 }}>
+      {/* Vaccinations */}
+      <section className="vaccinations-section">
         <h4>Vaccinations</h4>
-        {vaccinations.length === 0 ? <p className="no-records">No vaccination records.</p> : (
-          <table className="record-table">
+        {vaccinations.length === 0 ? (
+          <p>No vaccination records.</p>
+        ) : (
+          <table className="records-table">
             <thead>
-              <tr><th>Date</th><th>Vaccine</th><th>Dose</th><th>Next Due</th></tr>
+              <tr>
+                <th>Date Given</th>
+                <th>Next Due Date</th>
+                <th>Medicine</th>
+                <th>Batch</th>
+                <th>Branch</th>
+              </tr>
             </thead>
             <tbody>
-              {vaccinations.map((v) => (
-                <tr key={v._id || v.id || Math.random()}>
-                  <td>{v.dateGiven ? new Date(v.dateGiven).toLocaleString() : (v.date || "—")}</td>
-                  <td>{v.medicineNameSnapshot || v.vaccineName || v.vaccineType || "—"}</td>
-                  <td>{v.doseQty || v.dose || "—"}</td>
-                  <td>{v.nextDueDate ? new Date(v.nextDueDate).toLocaleDateString() : "—"}</td>
+              {vaccinations.map(v => (
+                <tr key={v._id}>
+                  <td>{new Date(v.dateGiven).toLocaleDateString()}</td>
+                  <td>{v.nextDueDate ? new Date(v.nextDueDate).toLocaleDateString() : "-"}</td>
+                  <td>{v.medicineNameSnapshot}</td>
+                  <td>{v.batch}</td>
+                  <td>{v.branchId}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </section>
+
+      {/* Drug Allergies */}
+      <section className="allergies-section">
+        <h4>Drug Allergies</h4>
+        {drugAllergies.length === 0 ? (
+          <p>No drug allergies recorded.</p>
+        ) : (
+          <table className="records-table">
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Reaction</th>
+                <th>Severity</th>
+                <th>Note</th>
+                <th>Recorded At</th>
+              </tr>
+            </thead>
+            <tbody>
+              {drugAllergies.map(d => (
+                <tr key={d._id}>
+                  <td>{d.name}</td>
+                  <td>{d.reaction}</td>
+                  <td>{d.severity}</td>
+                  <td>{d.note || "-"}</td>
+                  <td>{new Date(d.recordedAt).toLocaleDateString()}</td>
                 </tr>
               ))}
             </tbody>

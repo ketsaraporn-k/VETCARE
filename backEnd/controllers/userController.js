@@ -10,41 +10,67 @@ const COOKIE_MAX_AGE = 24 * 60 * 60 * 1000; // 1 day
 // REGISTER
 exports.register = async (req, res) => {
   try {
-    const { username, password, name, email, phone, role, branchId } = req.body;
-    if (!username || !password || !name) return res.status(422).json({ error: 'username, password and name are required' });
-
-    const existingUser = await User.findOne({ username });
-    if (existingUser) return res.status(400).json({ error: 'Username already exists' });
-
-    // DON'T hash here — UserSchema.pre('save') will hash when saving
-    const newUser = new User({
+    const {
       username,
       password,
       name,
       email,
       phone,
+      addressUser,
       role,
       branchId,
+      pets,
+      doctorProfile,
+      profilePicture,
+      metadata
+    } = req.body;
+
+    // ตรวจฟิลด์ที่จำเป็น
+    if (!username || !password || !name) {
+      return res.status(422).json({ error: 'username, password and name are required' });
+    }
+
+    // ตรวจซ้ำ username
+    const existingUser = await User.findOne({ username });
+    if (existingUser) {
+      return res.status(400).json({ error: 'Username already exists' });
+    }
+
+    // สร้าง user ใหม่
+    const newUser = new User({
+      username,
+      password, // UserSchema.pre('save') จะ hash ให้เอง
+      name,
+      email: email || null,
+      phone: phone || null,
+      addressUser: addressUser || null,
+      role: role || 'owner',
+      branchId: branchId || null,
+      pets: pets || [],
+      doctorProfile: doctorProfile || {},
+      profilePicture: profilePicture || {},
+      metadata: metadata || {},
       createdBy: req.user?.id || null,
       updatedBy: req.user?.id || null
     });
+
     await newUser.save();
 
     const out = newUser.toJSON ? newUser.toJSON() : newUser;
     return res.status(201).json({ message: 'User registered successfully', user: out });
+
   } catch (err) {
     console.error('register err', err);
     return res.status(400).json({ error: err.message });
   }
 };
 
-// LOGIN (sets httpOnly cookie, returns sanitized user)
+// LOGIN (sets httpOnly cookie, returns sanitized user + token)
 exports.login = async (req, res) => {
   try {
     const { username, password } = req.body;
     if (!username || !password) return res.status(422).json({ error: 'username and password required' });
 
-    // need to select password (schema has select:false)
     const user = await User.findOne({ username }).select('+password');
     if (!user) return res.status(404).json({ error: 'User not found' });
 
@@ -57,7 +83,7 @@ exports.login = async (req, res) => {
       { expiresIn: '1d' }
     );
 
-    // set cookie (httpOnly) + return sanitized user (no token)
+    // set cookie
     res.cookie(COOKIE_NAME, token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
@@ -65,6 +91,7 @@ exports.login = async (req, res) => {
       maxAge: COOKIE_MAX_AGE
     });
 
+    // sanitized user
     const safeUser = {
       id: user._id,
       username: user.username,
@@ -73,12 +100,19 @@ exports.login = async (req, res) => {
       branchId: user.branchId || null
     };
 
-    return res.json({ message: 'Login successful', user: safeUser });
+    // ✅ ส่ง token ใน response ด้วย
+    return res.json({
+      message: 'Login successful',
+      user: safeUser,
+      token
+    });
+
   } catch (err) {
     console.error('login err', err);
     return res.status(500).json({ error: err.message });
   }
 };
+
 
 // LOGOUT (clear cookie)
 exports.logout = async (req, res) => {
@@ -111,6 +145,32 @@ exports.getProfile = async (req, res) => {
     return res.status(500).json({ error: err.message });
   }
 };
+// GET PROFILE (OwnerPet)
+exports.getProfile = async (req, res) => {
+  try {
+    const userId = req.user?.id || req.user?._id;
+    if (!userId) return res.status(401).json({ error: 'Unauthorized' });
+
+    // ดึง user เฉพาะ owner พร้อม pets
+    const user = await User.findById(userId)
+      .select('-password')
+      .lean(); // lean() ให้ return plain object ง่ายต่อ frontend
+
+    if (!user) return res.status(404).json({ error: 'User not found' });
+
+    if (user.role !== 'owner') {
+      return res.status(403).json({ error: 'Access denied. Not an owner.' });
+    }
+
+    return res.json(user);
+  } catch (err) {
+    console.error('getProfile err', err);
+    return res.status(500).json({ error: err.message });
+  }
+};
+
+
+
 
 // CRUD - createUser (admin use)
 exports.createUser = async (req, res) => {
@@ -160,7 +220,7 @@ exports.updateUser = async (req, res) => {
     let updates = { ...req.body };
 
     if (updaterRole === 'owner') {
-      const allowedFields = ['name', 'email', 'phone', 'password'];
+      const allowedFields = ['name', 'email', 'phone', 'password', 'addressUser', 'profilePicture'];
       Object.keys(updates).forEach(k => { if (!allowedFields.includes(k)) delete updates[k]; });
     }
 

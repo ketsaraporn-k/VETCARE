@@ -1,95 +1,139 @@
-//
+// src/pages/OwnerPetDetail.jsx
 import React, { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
-import api from "../api/axiosConfig";
-import PetInfoCard from "../components/PetInfoCard";
-import MedicalRecordPanel from "../components/MedicalRecordPanel";
+import axios from "axios";
 import "./OwnerPetDetail.css";
 
-const PetDetail = () => {
+const OwnerPetDetail = () => {
   const { id } = useParams();
   const [pet, setPet] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [appointments, setAppointments] = useState([]);
 
   useEffect(() => {
-    let mounted = true;
-    setLoading(true);
-
-    const fetchPet = async () => {
-      try {
-        // ใช้ api (axios instance) ที่มี baseURL และ token interceptor แล้ว
-        const [petRes, apptRes] = await Promise.all([
-          api.get(`/pets/${id}`),
-          api.get(`/appointments/pet/${id}`) // ถ้า backend route ต่างกัน ให้ปรับเป็น /appointments?petId=... หรือ route ที่คุณมี
-        ]);
-
-        if (!mounted) return;
-        setPet(petRes.data);
-        setAppointments(apptRes.data || []);
-      } catch (err) {
-        console.error("Error loading pet detail:", err);
-        // ถ้า 404 หรือ ไม่มีข้อมูล ให้ตั้ง pet = null (จะโชว์ Pet not found)
-        if (err.response?.status === 404) {
-          setPet(null);
-        }
-      } finally {
-        if (mounted) setLoading(false);
-      }
-    };
-
-    fetchPet();
-
-    return () => {
-      mounted = false;
-    };
+    axios
+      .get(`http://localhost:3000/api/pets/${id}`, {
+        headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+      })
+      .then((res) => setPet(res.data))
+      .catch((err) => console.error("Error fetching pet detail:", err))
+      .finally(() => setLoading(false));
   }, [id]);
 
   if (loading) return <p>Loading pet details...</p>;
   if (!pet) return <p>Pet not found.</p>;
 
+  const formatDate = (dateStr) => dateStr ? new Date(dateStr).toLocaleDateString() : "-";
+
   return (
-    <div className="pet-detail-page">
-      <div className="pet-detail-top">
-        <Link to="/pets" className="btn-back">← Back to Pets</Link>
-        <PetInfoCard pet={pet} />
-      </div>
+    <div className="pet-detail-container">
+      <h2>Pet Detail: {pet.name}</h2>
+      <img
+        src={pet.profilePicture?.url || "/images/default-pet.png"}
+        alt={pet.name}
+        className="pet-avatar"
+      />
 
-      <div className="pet-detail-sections">
-        <section className="records-section">
-          <MedicalRecordPanel petId={id} />
-        </section>
+      <section>
+        <h3>Basic Info</h3>
+        <table className="info-table">
+          <tbody>
+            <tr><td>Species</td><td>{pet.species}</td></tr>
+            <tr><td>Breed</td><td>{pet.breed}</td></tr>
+            <tr><td>Sex</td><td>{pet.sex}</td></tr>
+            <tr><td>Age</td><td>{pet.age}</td></tr>
+          </tbody>
+        </table>
+      </section>
 
-        <section className="appointments-section">
-          <h3>Appointments for {pet.name}</h3>
-          {appointments.length === 0 ? (
-            <p>No appointments scheduled.</p>
-          ) : (
-            <table className="appointments-table">
-              <thead>
-                <tr>
-                  <th>Date</th>
-                  <th>Time</th>
-                  <th>Purpose</th>
-                  <th>Doctor</th>
+      <section>
+        <h3>Treatments</h3>
+        {pet.treatments.length === 0 ? (
+          <p>No treatment records.</p>
+        ) : (
+          <table className="records-table">
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Symptoms</th>
+                <th>Diagnosis</th>
+                <th>Medicine</th>
+                <th>Quantity</th>
+              </tr>
+            </thead>
+            <tbody>
+              {pet.treatments.map((t) => (
+                <tr key={t._id}>
+                  <td>{formatDate(t.treatmentDate)}</td>
+                  <td>{t.symptoms}</td>
+                  <td>{t.diagnosis}</td>
+                  <td>{t.medicineNameSnapshot}</td>
+                  <td>{t.quantityUsed}</td>
                 </tr>
-              </thead>
-              <tbody>
-                {appointments.map(a => (
-                  <tr key={a._id || a.id}>
-                    <td>{new Date(a.date).toLocaleDateString()}</td>
-                    <td>{new Date(a.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</td>
-                    <td>{a.purpose}</td>
-                    <td>{a.doctor}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
-        </section>
-      </div>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </section>
+
+      <section>
+        <h3>Vaccinations</h3>
+        {pet.vaccinations.length === 0 ? (
+          <p>No vaccination records.</p>
+        ) : (
+          <table className="records-table">
+            <thead>
+              <tr>
+                <th>Vaccine</th>
+                <th>Dose</th>
+                <th>Date Given</th>
+                <th>Next Due</th>
+                <th>Batch</th>
+              </tr>
+            </thead>
+            <tbody>
+              {pet.vaccinations.map((v) => (
+                <tr key={v._id}>
+                  <td>{v.medicineNameSnapshot}</td>
+                  <td>{v.doseQty}</td>
+                  <td>{formatDate(v.dateGiven)}</td>
+                  <td>{formatDate(v.nextDueDate)}</td>
+                  <td>{v.batch || "-"}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </section>
+
+      <section>
+        <h3>Drug Allergies</h3>
+        {pet.drugAllergies.length === 0 ? (
+          <p>No drug allergy records.</p>
+        ) : (
+          <table className="records-table">
+            <thead>
+              <tr>
+                <th>Drug</th>
+                <th>Reaction</th>
+                <th>Severity</th>
+              </tr>
+            </thead>
+            <tbody>
+              {pet.drugAllergies.map((a) => (
+                <tr key={a._id}>
+                  <td>{a.name}</td>
+                  <td>{a.reaction}</td>
+                  <td>{a.severity}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </section>
+
+      <Link to="/pets" className="btn-back">← Back to Pets</Link>
     </div>
   );
 };
 
-export default PetDetail;
+export default OwnerPetDetail;

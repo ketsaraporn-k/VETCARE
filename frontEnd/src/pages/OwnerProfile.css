@@ -121,3 +121,11 @@ button:hover {
 .button-section button {
   margin: 5px;
 }
+
+.pet-list {
+  list-style: disc;
+  padding-left: 20px;
+}
+.pet-list li {
+  margin-bottom: 4px;
+}

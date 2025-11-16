@@ -37,7 +37,8 @@ module.exports = async (req, res, next) => {
     if (!user) return res.status(401).json({ error: 'Invalid token (user not found)' });
 
     // Attach user document to request for downstream handlers
-    req.user = user;
+    req.user = user; //<-- ใช้สำหรับเรียก owner id: req.user._idได้ด้วย
+   /*  req.user = decodedUser */
 
     // Also attach raw token & decoded (optional helpers)
     req.authToken = token;

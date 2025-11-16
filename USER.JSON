@@ -1,34 +1,98 @@
 [
   {
+    "_id": { "$oid": "66a000000000000000000001" },
     "username": "superadmin",
-    "password": "$2a$10$9eZkXbdYrczKxOZJjgb8Fe8v9s5MfnrPClmpH1Wg5xtHk8mKX2V4e", 
+    "password": "$2a$10$abcdefghijklmnopqrstuv11",
     "name": "Super Admin",
-    "email": "superadmin@clinic.com",
-    "phone": 1234567890,
-    "role": "superAdmin"
+    "role": "superAdmin",
+    "email": "superadmin@example.com",
+    "isActive": true,
+    "createdAt": { "$date": "2024-11-15T00:00:00Z" }
   },
+
   {
-    "username": "branch01admin",
-    "password": "$2a$10$9eZkXbdYrczKxOZJjgb8Fe8v9s5MfnrPClmpH1Wg5xtHk8mKX2V4e", 
-    "name": "Branch Admin 1",
-    "email": "admin1@clinic.com",
-    "phone": 987654321,
-    "role": "branchAdmin"
+    "_id": { "$oid": "66a000000000000000000002" },
+    "username": "branchadmin1",
+    "password": "$2a$10$abcdefghijklmnopqrstuv22",
+    "name": "Branch Admin A",
+    "role": "branchAdmin",
+    "branchId": { "$oid": "66b000000000000000000001" },
+    "email": "ba1@example.com"
   },
+
   {
-    "username": "staff01",
-    "password": "$2a$10$9eZkXbdYrczKxOZJjgb8Fe8v9s5MfnrPClmpH1Wg5xtHk8mKX2V4e", 
-    "name": "Staff One",
-    "email": "staff1@clinic.com",
-    "phone": 555555555,
-    "role": "staff"
+    "_id": { "$oid": "66a000000000000000000003" },
+    "username": "doctor1",
+    "password": "$2a$10$abcdefghijklmnopqrstuv33",
+    "name": "Dr. Somchai",
+    "role": "doctor",
+    "doctorProfile": {
+      "licenseNumber": "TH-123456",
+      "specialty": "General Vet",
+      "availableBranches": [
+        { "$oid": "66b000000000000000000001" },
+        { "$oid": "66b000000000000000000002" }
+      ]
+    }
   },
+
   {
-    "username": "owner01",
-    "password": "$2a$10$9eZkXbdYrczKxOZJjgb8Fe8v9s5MfnrPClmpH1Wg5xtHk8mKX2V4e", 
-    "name": "Alice Owner",
-    "email": "alice@pet.com",
-    "phone": 666666666,
-    "role": "owner"
+    "_id": { "$oid": "66a000000000000000000004" },
+    "username": "staff1",
+    "password": "$2a$10$abcdefghijklmnopqrstuv44",
+    "name": "Staff A",
+    "role": "staff",
+    "branchId": { "$oid": "66b000000000000000000001" }
+  },
+
+  {
+    "_id": { "$oid": "66a000000000000000000005" },
+    "username": "owner1",
+    "password": "$2a$10$abcdefghijklmnopqrstuv55",
+    "name": "Owner One",
+    "role": "owner",
+    "pets": [
+      {
+        "_id": { "$oid": "66c000000000000000000001" },
+        "name": "Milo",
+        "species": "Dog",
+        "sex": "Male",
+        "age": "2 years",
+        "breed": "Golden Retriever",
+        "drugAllergies": [
+          {
+            "_id": { "$oid": "66c111111111111111111111" },
+            "name": "Penicillin",
+            "reaction": "rash",
+            "severity": "moderate",
+            "recordedAt": { "$date": "2024-11-15T01:00:00Z" }
+          }
+        ],
+        "treatments": [
+          {
+            "_id": { "$oid": "66c222222222222222222222" },
+            "symptoms": "Fever, low appetite",
+            "diagnosis": "Viral infection",
+            "branchId": { "$oid": "66b000000000000000000001" },
+            "medicineId": { "$oid": "66e000000000000000000001" },
+            "medicineNameSnapshot": "Paracetamol",
+            "quantityUsed": 1,
+            "treatmentDate": { "$date": "2024-11-12T00:00:00Z" }
+          }
+        ],
+        "vaccinations": [
+          {
+            "_id": { "$oid": "66c333333333333333333333" },
+            "branchId": { "$oid": "66b000000000000000000001" },
+            "medicineId": { "$oid": "66e000000000000000000002" },
+            "medicineNameSnapshot": "Rabies Vaccine",
+            "doseQty": 1,
+            "batch": "RB-953",
+            "dateGiven": { "$date": "2024-11-05T00:00:00Z" },
+            "nextDueDate": { "$date": "2025-11-05T00:00:00Z" }
+          }
+        ]
+      }
+    ]
   }
 ]

@@ -1,4 +1,4 @@
-// src/pages/OwnerProfile.jsx
+// / frontEnd/src/pages/OwnerProfile.jsx 
 import React, { useState, useEffect } from "react";
 import axios from "axios";
 import "./OwnerProfile.css";
@@ -8,7 +8,7 @@ const OwnerProfile = () => {
   const [isEditing, setIsEditing] = useState(false);
   const [loading, setLoading] = useState(true);
 
-  // ✅ ดึงข้อมูลโปรไฟล์
+  //  ⭐ โหลดข้อมูลผู้ใช้
   useEffect(() => {
     const fetchProfile = async () => {
       try {
@@ -16,45 +16,69 @@ const OwnerProfile = () => {
         const res = await axios.get("http://localhost:3000/api/users/profile", {
           headers: { Authorization: `Bearer ${token}` },
         });
-        setProfile(res.data);
+
+        const user = res.data.user || res.data;
+
+        setProfile({
+          ...user,
+          id: user.id || user._id,
+          addressUser: user.addressUser || "", // ✅ เพิ่ม fallback
+          profilePicture: user.profilePicture || { url: null, filename: null }, // ✅ เพิ่ม fallback
+        });
+
         setLoading(false);
       } catch (error) {
         console.error("❌ Error fetching profile:", error);
+        if (error.response?.status === 401) {
+          localStorage.removeItem("token");
+        }
         setLoading(false);
       }
     };
     fetchProfile();
   }, []);
 
+  // input-change
   const handleChange = (e) => {
     setProfile({ ...profile, [e.target.name]: e.target.value });
   };
 
-  // ✅ บันทึกการแก้ไข
+  // ⭐ บันทึกข้อมูล owner
   const handleSave = async () => {
-  try {
-    const token = localStorage.getItem("token");
-    const res = await axios.put(
-      `http://localhost:3000/api/users/${profile._id}`,
-      profile,
-      { headers: { Authorization: `Bearer ${token}` } }
-    );
+    try {
+      const token = localStorage.getItem("token");
 
-    // ✅ ถ้า backend ไม่ส่ง avatar กลับ ให้ใช้ของเดิม
-    setProfile({
-      ...res.data.user,
-      avatar: res.data.user.avatar || profile.avatar,
-    });
+      const res = await axios.put(
+        `http://localhost:3000/api/users/${profile.id}`,
+        {
+          name: profile.name,
+          email: profile.email,
+          phone: profile.phone,
+          addressUser: profile.addressUser,
+        },
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
 
-    setIsEditing(false);
-    alert("✅ บันทึกข้อมูลสำเร็จ");
-  } catch (error) {
-    console.error("❌ Error saving profile:", error);
-    alert("ไม่สามารถบันทึกข้อมูลได้");
-  }
-};
+      const updated = res.data.user || res.data;
 
-  //  อัปโหลดรูปโปรไฟล์
+      setProfile({
+        ...updated,
+        id: updated.id || updated._id,
+        addressUser: updated.addressUser || "",
+        profilePicture: updated.profilePicture || profile.profilePicture,
+      });
+
+      setIsEditing(false);
+      alert("✅ บันทึกข้อมูลสำเร็จ");
+    } catch (error) {
+      console.error("❌ Error saving profile:", error);
+      alert("ไม่สามารถบันทึกข้อมูลได้");
+    }
+  };
+
+  // ⭐ อัปโหลดรูปภาพ
   const handleUpload = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -64,6 +88,7 @@ const OwnerProfile = () => {
 
     try {
       const token = localStorage.getItem("token");
+
       const res = await axios.post(
         "http://localhost:3000/api/users/upload-avatar",
         formData,
@@ -75,7 +100,11 @@ const OwnerProfile = () => {
         }
       );
 
-      setProfile({ ...profile, avatar: res.data.avatar });
+      setProfile({
+        ...profile,
+        profilePicture: res.data.profilePicture || profile.profilePicture,
+      });
+
       alert("✅ อัปโหลดรูปสำเร็จ");
     } catch (error) {
       console.error("❌ Error uploading avatar:", error);
@@ -83,7 +112,7 @@ const OwnerProfile = () => {
     }
   };
 
-
+  // Loading state
   if (loading) return <p>⏳ กำลังโหลดข้อมูล...</p>;
   if (!profile) return <p>ไม่พบข้อมูลผู้ใช้</p>;
 
@@ -94,20 +123,18 @@ const OwnerProfile = () => {
       <div className="profile-card">
         <div className="avatar-section">
           <img
-    src={
-      profile.avatar
-        ? profile.avatar.startsWith("http")
-          ? profile.avatar
-          : `http://localhost:3000${profile.avatar}`
-        : "/default-avatar.png"
-    }
-    alt="avatar"
-    className="profile-avatar"
-  />
+            src={
+              profile.profilePicture?.url
+                ? `http://localhost:3000${profile.profilePicture.url}`
+                : "/default-avatar.png"
+            }
+            alt="avatar"
+            className="profile-avatar"
+          />
 
-  {isEditing && (
-    <input type="file" accept="image/*" onChange={handleUpload} />
-  )}
+          {isEditing && (
+            <input type="file" accept="image/*" onChange={handleUpload} />
+          )}
         </div>
 
         <div className="info-section">
@@ -145,6 +172,31 @@ const OwnerProfile = () => {
             />
           ) : (
             <p>{profile.phone}</p>
+          )}
+
+          <label>ที่อยู่</label>
+          {isEditing ? (
+            <input
+              type="text"
+              name="addressUser"
+              value={profile.addressUser || ""}
+              onChange={handleChange}
+            />
+          ) : (
+            <p>{profile.addressUser}</p>
+          )}
+
+          <label>สัตว์เลี้ยง</label>
+          {profile.pets && profile.pets.length > 0 ? (
+            <ul className="pet-list">
+              {profile.pets.map((pet) => (
+                <li key={pet._id || pet.id}>
+                  {pet.name} ({pet.species || "ไม่ระบุ"}, {pet.breed || "ไม่ระบุ"})
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p>ยังไม่มีสัตว์เลี้ยง</p>
           )}
         </div>
 

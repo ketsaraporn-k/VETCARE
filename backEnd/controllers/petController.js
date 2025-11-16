@@ -61,3 +61,26 @@ exports.getPetsByBranch = async (req, res) => {
     return res.status(500).json({ error: err.message });
   }
 };
+
+
+// owner ใช้ดู pets ของตัวเอง
+exports.getOwnerPets = async (req, res) => {
+  try {
+    const ownerId = req.user._id; // <-- ใช้จาก auth middleware
+    const user = await require('../models/User').findById(ownerId)
+      .select('pets name username')
+      .lean();
+
+    if (!user) return res.status(404).json({ error: 'Owner not found' });
+
+    const pets = (user.pets || []).map(p => ({
+      ...p,
+      owner: { id: user._id, name: user.name, username: user.username } // <-- เพิ่ม owner info
+    }));
+
+    return res.json(pets);
+  } catch (err) {
+    console.error('getOwnerPets err', err);
+    return res.status(500).json({ error: err.message });
+  }
+};

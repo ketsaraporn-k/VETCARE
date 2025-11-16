@@ -1,0 +1,19 @@
+[
+  {
+    "_id": { "$oid": "66b000000000000000000001" },
+    "branchName": "Bangkok Pet Clinic",
+    "addressBranch": "Bangkok",
+    "phone": "021234567",
+    "managerId": { "$oid": "66a000000000000000000002" },
+    "isActive": true
+  },
+
+  {
+    "_id": { "$oid": "66b000000000000000000002" },
+    "branchName": "Chiang Mai Pet Clinic",
+    "addressBranch": "Chiang Mai",
+    "phone": "052345678",
+    "managerId": null,
+    "isActive": true
+  }
+]

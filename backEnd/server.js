@@ -58,6 +58,7 @@ function isRouterLike(router) {
 
 /* --- Declare mounts (แก้/เพิ่มตามไฟล์จริงของโปรเจกต์คุณ) --- */
 const mounts = [
+  
   // core
   { mountPoint: '/api/users',         relPath: './routes/userRoutes' },
   { mountPoint: '/api/branches',      relPath: './routes/branchRoutes' },
@@ -78,7 +79,16 @@ const mounts = [
   { mountPoint: '/api/staff/vaccinations', relPath: './staff/vaccinationManage' },
   { mountPoint: '/api/staff/schedules',     relPath: './staff/scheduleManage' },
   { mountPoint: '/api/staff-admin',  relPath: './staff/clinicStaffManage' },
+
+  // OwnerPet
+  { mountPoint: '/api/pets', relPath: './routes/OwnerPets' },
+
+  // Owner Appointments 
+{ mountPoint: '/api/owner/appointments', relPath: './routes/ownerAppointments' },
+  
 ];
+
+
 
 /* Mount safely: require each file, verify export is router-like, then app.use */
 for (const m of mounts) {

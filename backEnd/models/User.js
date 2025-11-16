@@ -95,7 +95,11 @@ const UserSchema = new Schema({
   pets: { type: [PetSchema], default: [] },
   notifications: { type: [EmbeddedNotificationSchema], default: [] },
   unreadNotifications: { type: Number, default: 0 },
-  profilePicture: { filename: String, url: String, uploadedAt: Date },
+  profilePicture: { 
+    filename: { type: String, default: null },
+    url: { type: String, default: null }, 
+    uploadedAt: { type: Date, default: null }
+  },
   metadata: { type: Schema.Types.Mixed, default: {} },
   isActive: { type: Boolean, default: true },
   createdBy: { type: Schema.Types.ObjectId, ref: 'User', default: null },

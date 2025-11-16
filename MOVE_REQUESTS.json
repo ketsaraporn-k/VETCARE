@@ -1,0 +1,20 @@
+[
+  {
+    "_id": { "$oid": "66d000000000000000000001" },
+    "requesterId": { "$oid": "66a000000000000000000002" }, 
+    "subjectUserId": { "$oid": "66a000000000000000000004" },
+    "fromBranch": { "$oid": "66b000000000000000000001" },
+    "toBranch": { "$oid": "66b000000000000000000002" },
+    "reason": "Need staff at Chiang Mai branch.",
+    "status": "pending",
+    "history": [
+      {
+        "_id": { "$oid": "66d111111111111111111111" },
+        "action": "created",
+        "by": { "$oid": "66a000000000000000000002" },
+        "at": { "$date": "2024-11-15T05:00:00Z" },
+        "note": "Requested staff transfer."
+      }
+    ]
+  }
+]

@@ -1,4 +1,4 @@
-// src/pages/Pets.jsx
+// src/pages/OwnerPets.jsx
 import React, { useEffect, useState } from "react";
 import axios from "axios";
 import { Link } from "react-router-dom";
@@ -8,20 +8,17 @@ const Pets = () => {
   const [pets, setPets] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    // ✅ เรียก API จาก backend MongoDB
-    axios
-      .get("http://localhost:3000/api/pets")
-      .then((res) => {
-        setPets(res.data); // ดึงข้อมูลจาก API
-      })
-      .catch((err) => {
-        console.error("Error fetching pets:", err);
-      })
-      .finally(() => {
-        setLoading(false);
-      });
-  }, []);
+ useEffect(() => {
+  //  เรียก API จาก backend MongoDB
+  axios
+    .get("http://localhost:3000/api/pets/my", {
+      headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } // 🔹 เพิ่ม header JWT
+    })
+    .then(res => setPets(res.data))// ดึงข้อมูลจาก API
+    .catch(err => console.error("Error fetching pets:", err))
+    .finally(() => setLoading(false));
+}, []);
+
 
   if (loading) return <p>Loading pets...</p>;
 
