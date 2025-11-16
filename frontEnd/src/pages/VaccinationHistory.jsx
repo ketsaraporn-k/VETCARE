@@ -2,6 +2,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import api from "../api/axiosConfig";
 import { VACCINE_OPTIONS } from "../constants/vaccines";
+import "../layout/VaccinationHistory.css";
 
 const VaccinationHistory = ({ ownerId, petId, canManage, user }) => {
   const [rows, setRows] = useState([]);
@@ -31,6 +32,11 @@ const VaccinationHistory = ({ ownerId, petId, canManage, user }) => {
     }
   }, [user]);
 
+  // ---- role logic ตามที่ต้องการ ----
+  const role = String(currentUser?.role || "").toLowerCase();
+  const isSuperAdmin = role === "superadmin";
+  const isStaff = role === "staff";
+
   const fetchData = async () => {
     if (!ownerId || !petId) return;
     try {
@@ -57,7 +63,7 @@ const VaccinationHistory = ({ ownerId, petId, canManage, user }) => {
     .slice(0, 5);
 
   const filteredOptions = VACCINE_OPTIONS.filter((opt) =>
-    opt.label.toLowerCase().includes(form.vaccineType.toLowerCase())
+    opt.label.toLowerCase().includes((form.vaccineType || "").toLowerCase())
   );
 
   const openCreate = () => {
@@ -102,13 +108,15 @@ const VaccinationHistory = ({ ownerId, petId, canManage, user }) => {
       return;
     }
 
+    const doseNumber = Number(form.doses) || 1;
+
     try {
       await api.post(`/api/staff/vaccinations/${ownerId}/${petId}`, {
         branchId: currentUser?.branchId,
         dateGiven: form.dateGiven,
         vaccineType: form.vaccineType,
         nextDueDate: form.nextDueDate,
-        doseQty: form.doses || 1,
+        doseQty: doseNumber,
         note: form.note,
       });
       await fetchData();
@@ -141,6 +149,7 @@ const VaccinationHistory = ({ ownerId, petId, canManage, user }) => {
     }
   };
 
+  // ==================== RENDER ====================
   return (
     <section className="pet-section">
       <div className="section-top">
@@ -152,7 +161,8 @@ const VaccinationHistory = ({ ownerId, petId, canManage, user }) => {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
-          {canManage && (
+          {/* superAdmin ดูอย่างเดียว → ไม่ต้องมีปุ่ม */}
+          {canManage && !isSuperAdmin && (
             <button
               className="staffpet-button staffpet-button-primary"
               onClick={openCreate}
@@ -173,8 +183,8 @@ const VaccinationHistory = ({ ownerId, petId, canManage, user }) => {
               <th>Vaccine</th>
               <th>Doses</th>
               <th>Next Due</th>
-              <th>Staff</th>
-              {canManage && <th>Action</th>}
+              {/* column Action แสดงเฉพาะคนที่แก้ไขได้ */}
+              {canManage && !isSuperAdmin && <th>Action</th>}
             </tr>
           </thead>
           <tbody>
@@ -190,23 +200,27 @@ const VaccinationHistory = ({ ownerId, petId, canManage, user }) => {
                     ? new Date(v.nextDueDate).toLocaleDateString()
                     : "-"}
                 </td>
-                <td>{v.staffId?.name || "-"}</td>
-                {canManage && (
+                {canManage && !isSuperAdmin && (
                   <td style={{ whiteSpace: "nowrap" }}>
+                    {/* ทุก role ที่ไม่ใช่ superAdmin แก้ไขได้ */}
                     <button
                       className="staffpet-button staffpet-button-ghost"
                       onClick={() => openEdit(v)}
                     >
                       ✎ Edit
                     </button>
-                    <button
-                      className="staffpet-button staffpet-button-danger"
-                      disabled={deletingId === v._id}
-                      onClick={() => handleDelete(v)}
-                      style={{ marginLeft: 8 }}
-                    >
-                      {deletingId === v._id ? "Deleting..." : "🗑 Delete"}
-                    </button>
+
+                    {/* ปุ่มลบ: ห้าม staff ลบ → ซ่อนเฉพาะ staff */}
+                    {!isStaff && (
+                      <button
+                        className="staffpet-button staffpet-button-danger"
+                        disabled={deletingId === v._id}
+                        onClick={() => handleDelete(v)}
+                        style={{ marginLeft: 8 }}
+                      >
+                        {deletingId === v._id ? "Deleting..." : "🗑 Delete"}
+                      </button>
+                    )}
                   </td>
                 )}
               </tr>
@@ -219,7 +233,8 @@ const VaccinationHistory = ({ ownerId, petId, canManage, user }) => {
         <p className="section-more">Showing latest 5 records.</p>
       )}
 
-      {showModal && (
+      {/* superAdmin ดูเฉย ๆ → ไม่ต้องมี modal */}
+      {showModal && !isSuperAdmin && (
         <div className="petdetail-modal-overlay" onClick={closeModal}>
           <div className="petdetail-modal" onClick={(e) => e.stopPropagation()}>
             <h3 className="modal-title">
@@ -279,7 +294,8 @@ const VaccinationHistory = ({ ownerId, petId, canManage, user }) => {
               <label>
                 Doses
                 <input
-                  type="text"
+                  type="number"
+                  min="1"
                   className="staffpet-input"
                   value={form.doses}
                   onChange={(e) =>

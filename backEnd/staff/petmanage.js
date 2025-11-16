@@ -1,33 +1,47 @@
 const express = require("express");
 const mongoose = require("mongoose");
 const auth = require("../middleware/auth");
-const role = require("../middleware/role"); // ของเพื่อน: ตรวจ role ตรงๆ
-const { assertBranch, canSeeAll } = require("../middleware/scope"); // ของเรา
+const role = require("../middleware/role"); // ตรวจ role ตรงๆ
+const { assertBranch, canSeeAll } = require("../middleware/scope");
 const User = require("../models/User");
 const Branch = require("../models/Branch");
 
 const router = express.Router();
-const isOid = v => mongoose.isValidObjectId(String(v || ""));
+const isOid = (v) => mongoose.isValidObjectId(String(v || ""));
 
-// ---------------------- CREATE PET ----------------------
-// POST /staff/pets  (body: ownerId, branchId, name, species, ... )
+/* CREATE PET POST /staff/pets */
 router.post(
   "/pets",
   auth,
   role(["staff", "branchAdmin", "doctor", "superAdmin"]),
   async (req, res) => {
     try {
-      const { ownerId, branchId, name, species, breed, sex, age, metadata } = req.body;
+      const {
+        ownerId,
+        branchId,
+        name,
+        species,
+        breed,
+        sex,
+        age,
+        metadata,
+      } = req.body;
+
       if (!ownerId || !branchId || !name) {
-        return res.status(400).json({ error: "ต้องระบุ ownerId, branchId และ name" });
+        return res
+          .status(400)
+          .json({ error: "ต้องระบุ ownerId, branchId และ name" });
       }
       if (!isOid(ownerId) || !isOid(branchId)) {
-        return res.status(400).json({ error: "ownerId หรือ branchId ไม่ถูกต้อง" });
+        return res
+          .status(400)
+          .json({ error: "ownerId หรือ branchId ไม่ถูกต้อง" });
       }
 
       // เช็คสิทธิ์สาขา (เว้น superAdmin)
       const branchCheck = assertBranch(req, branchId);
-      if (!branchCheck.ok) return res.status(403).json({ error: branchCheck.error });
+      if (!branchCheck.ok)
+        return res.status(403).json({ error: branchCheck.error });
 
       const owner = await User.findById(ownerId);
       if (!owner) return res.status(404).json({ error: "Owner user not found" });
@@ -35,7 +49,7 @@ router.post(
       const branch = await Branch.findById(branchId);
       if (!branch) return res.status(404).json({ error: "Branch not found" });
 
-      // ถ้า owner ยังไม่มี branchId ให้ผูกเข้ากับ branch นี้ (ตามดุลยพินิจ)
+      // ถ้า owner ยังไม่มี branchId ให้ผูกเข้ากับ branch นี้
       if (!owner.branchId) owner.branchId = branchId;
 
       const petPayload = {
@@ -45,7 +59,7 @@ router.post(
         age: age || null,
         breed: breed || null,
         metadata: metadata || {},
-        createdAt: new Date()
+        createdAt: new Date(),
       };
 
       owner.pets.push(petPayload);
@@ -60,9 +74,9 @@ router.post(
   }
 );
 
-// ---------------------- LIST PETS ----------------------
-// GET /staff/pets?branchId=...&q=...&page=1&pageSize=10
-// superAdmin ส่ง ?all=1 เพื่อดูทุกสาขา
+/* LIST PETS GET /staff/pets */
+// ?branchId=...&q=...&page=1&pageSize=10
+// superAdmin: ?all=1 เพื่อดูทุกสาขา หรือ ?branchId=... เพื่อดูเฉพาะสาขา
 router.get(
   "/pets",
   auth,
@@ -70,14 +84,16 @@ router.get(
   async (req, res) => {
     try {
       const page = Math.max(parseInt(req.query.page || 1, 10), 1);
-      const pageSize = Math.min(Math.max(parseInt(req.query.pageSize || 10, 10), 1), 100);
+      const pageSize = Math.min(
+        Math.max(parseInt(req.query.pageSize || 10, 10), 1),
+        100
+      );
       const skip = (page - 1) * pageSize;
 
       const q = String(req.query.q || "").trim();
       const wantAll = String(req.query.all || "") === "1" && canSeeAll(req);
       const bidStr = (req.query.branchId || req.user?.branchId || "").toString();
 
-      // แปลงเป็น ObjectId อย่างปลอดภัย (ถ้าไม่ใช่ก็ปล่อยเป็น string)
       let bid = null;
       if (mongoose.isValidObjectId(bidStr)) {
         bid = new mongoose.Types.ObjectId(bidStr);
@@ -86,50 +102,81 @@ router.get(
       let users = [];
 
       if (wantAll) {
-        // superAdmin เห็นทั้งหมด
-        users = await User.find({}).select("name username pets branchId").lean();
+        // superAdmin เห็นทุกสาขา
+        users = await User.find({})
+          .select("name username pets branchId")
+          .lean();
       } else {
         if (!bid && !bidStr) {
           return res.status(400).json({ error: "branchId required" });
         }
 
-        // ตรวจสิทธิ์ด้วยค่าที่ผู้ใช้ล็อกอินถืออยู่ (ไม่พึ่งค่าจาก query อย่างเดียว)
+        // ตรวจสิทธิ์ด้วย branch ที่ผูกกับ user
         const branchCheck = assertBranch(req, bid || bidStr);
-        if (!branchCheck.ok) return res.status(403).json({ error: branchCheck.error });
+        if (!branchCheck.ok)
+          return res.status(403).json({ error: branchCheck.error });
 
-        // 1) ดึง owner ที่ branchId = สาขานี้ หรือ branchId = null (เจ้าของเก่าที่ยังไม่ผูกสาขา)
-        const baseFilter = { $or: [{ branchId: bid || bidStr }, { branchId: null }] };
+        const baseFilter = {
+          $or: [{ branchId: bid || bidStr }, { branchId: null }],
+        };
 
-        users = await User.find(baseFilter).select("name username pets branchId").lean();
+        users = await User.find(baseFilter)
+          .select("name username pets branchId")
+          .lean();
 
-        // 2) กันพลาด: ถ้าไม่มีจริง ๆ ให้ fallback เป็นดึงทั้งหมดแล้วค่อย filter ทีหลัง
         if (!users.length) {
-          users = await User.find({}).select("name username pets branchId").lean();
+          users = await User.find({})
+            .select("name username pets branchId")
+            .lean();
         }
       }
 
-      // ==== DEBUG LOG ชัด ๆ ในแบ็กเอนด์ ====
-      console.log("[/staff/pets] role:", req.user?.role,
-                  " req.branchId:", req.user?.branchId,
-                  " query.branchId:", req.query.branchId,
-                  " usersFetched:", users.length);
+      // preload branch name ทั้งหมดครั้งเดียว
+      const branchIds = [
+        ...new Set(
+          users
+            .map((u) => u.branchId)
+            .filter(Boolean)
+            .map((id) => id.toString())
+        ),
+      ];
 
-      // สร้างรายการ pets ออกมา
+      let branchMap = new Map();
+      if (branchIds.length) {
+        const branches = await Branch.find({ _id: { $in: branchIds } })
+          .select("branchName name code")
+          .lean();
+        branchMap = new Map(
+          branches.map((b) => [String(b._id), b])
+        );
+      }
+
       let rows = [];
-      users.forEach(u => {
-        (u.pets || []).forEach(p => {
+      users.forEach((u) => {
+        const bDoc = u.branchId
+          ? branchMap.get(String(u.branchId)) || null
+          : null;
+        const branchName =
+          bDoc?.branchName || bDoc?.name || (bDoc?.code || "").toString();
+
+        (u.pets || []).forEach((p) => {
           rows.push({
             ...p,
-            owner: { id: u._id, name: u.name, username: u.username },
+            owner: {
+              id: u._id,
+              name: u.name,
+              username: u.username,
+              branchId: u.branchId || null,
+              branchName: branchName || null,
+            },
             branchId: u.branchId || null,
+            branchName: branchName || null,
           });
         });
       });
 
-      // ถ้าไม่ใช่ super และมี bid แล้ว ให้ filter ซ้ำฝั่งแอพ
       if (!wantAll && (bid || bidStr)) {
-        rows = rows.filter(r => {
-          // เจ้าของไม่มี branchId (null) = อนุโลมให้เห็น
+        rows = rows.filter((r) => {
           if (!r.branchId) return true;
           return String(r.branchId) === String(bid || bidStr);
         });
@@ -138,7 +185,8 @@ router.get(
       if (q) {
         const re = new RegExp(q, "i");
         rows = rows.filter(
-          p => re.test(p.name) || re.test(p.species || "") || re.test(p.breed || "")
+          (p) =>
+            re.test(p.name) || re.test(p.species || "") || re.test(p.breed || "")
         );
       }
 
@@ -159,8 +207,7 @@ router.get(
   }
 );
 
-// ---------------------- GET SINGLE PET ----------------------
-// GET /staff/pets/:ownerId/:petId
+/* GET SINGLE PET GET /staff/pets/:ownerId/:petId */
 router.get(
   "/pets/:ownerId/:petId",
   auth,
@@ -172,18 +219,41 @@ router.get(
         return res.status(400).json({ error: "id ไม่ถูกต้อง" });
       }
 
-      const owner = await User.findById(ownerId).select("name branchId pets").lean();
+      const owner = await User.findById(ownerId)
+        .select("name branchId pets")
+        .lean();
       if (!owner) return res.status(404).json({ error: "Owner not found" });
 
       const branchCheck = assertBranch(req, owner.branchId);
-      if (!branchCheck.ok) return res.status(403).json({ error: branchCheck.error });
+      if (!branchCheck.ok)
+        return res.status(403).json({ error: branchCheck.error });
 
-      const pet = (owner.pets || []).find(p => String(p._id) === String(petId));
+      const pet = (owner.pets || []).find(
+        (p) => String(p._id) === String(petId)
+      );
       if (!pet) return res.status(404).json({ error: "Pet not found" });
+
+      let branchName = null;
+      if (owner.branchId) {
+        const b = await Branch.findById(owner.branchId)
+          .select("branchName name code")
+          .lean();
+        if (b) {
+          branchName =
+            b.branchName || b.name || (b.code || "").toString();
+        }
+      }
 
       return res.json({
         ...pet,
-        owner: { id: ownerId, name: owner.name, branchId: owner.branchId },
+        owner: {
+          id: ownerId,
+          name: owner.name,
+          branchId: owner.branchId,
+          branchName,
+        },
+        branchId: owner.branchId,
+        branchName,
       });
     } catch (err) {
       console.error("get single pet error", err);
@@ -192,8 +262,9 @@ router.get(
   }
 );
 
-// ---------------------- UPDATE PET ----------------------
-// PUT /staff/pets/:ownerId/:petId
+/* UPDATE PET
+   PUT /staff/pets/:ownerId/:petId */
+
 router.put(
   "/pets/:ownerId/:petId",
   auth,
@@ -209,14 +280,28 @@ router.put(
       if (!owner) return res.status(404).json({ error: "Owner not found" });
 
       const branchCheck = assertBranch(req, owner.branchId);
-      if (!branchCheck.ok) return res.status(403).json({ error: branchCheck.error });
+      if (!branchCheck.ok)
+        return res.status(403).json({ error: branchCheck.error });
 
       const pet = owner.pets.id(petId);
       if (!pet) return res.status(404).json({ error: "Pet not found" });
 
-      const allowed = ['name','species','sex','age','breed','metadata','isArchived','healthStatus'];
-      allowed.forEach(k => {
-        if (req.body[k] !== undefined) pet[k] = req.body[k];
+      const allowed = [
+        "name",
+        "species",
+        "sex",
+        "age",
+        "breed",
+        "metadata",
+        "isArchived",
+        "healthStatus",
+        "drugAllergies",
+      ];
+
+      allowed.forEach((k) => {
+        if (req.body[k] !== undefined) {
+          pet[k] = req.body[k];
+        }
       });
 
       await owner.save();
@@ -228,12 +313,13 @@ router.put(
   }
 );
 
-// ---------------------- DELETE PET ----------------------
-// DELETE /staff/pets/:ownerId/:petId
+/* DELETE PET
+   DELETE /staff/pets/:ownerId/:petId */
+
 router.delete(
   "/pets/:ownerId/:petId",
   auth,
-  role(["branchAdmin", "superAdmin"]), // ลบจำกัดที่ branchAdmin/superAdmin
+  role(["branchAdmin", "superAdmin"]),
   async (req, res) => {
     try {
       const { ownerId, petId } = req.params;
@@ -245,7 +331,8 @@ router.delete(
       if (!owner) return res.status(404).json({ error: "Owner not found" });
 
       const branchCheck = assertBranch(req, owner.branchId);
-      if (!branchCheck.ok) return res.status(403).json({ error: branchCheck.error });
+      if (!branchCheck.ok)
+        return res.status(403).json({ error: branchCheck.error });
 
       const pet = owner.pets.id(petId);
       if (!pet) return res.status(404).json({ error: "Pet not found" });
@@ -260,7 +347,9 @@ router.delete(
   }
 );
 
-// GET /staff/owners?branchId=...&q=...&all=1
+/* SEARCH OWNERS
+   GET /staff/owners */
+
 router.get(
   "/owners",
   auth,
@@ -316,6 +405,75 @@ router.get(
       res.json({ data });
     } catch (err) {
       console.error("search owners err", err);
+      res.status(500).json({ error: "SERVER_ERROR" });
+    }
+  }
+);
+
+/* BRANCH LIST FOR DROPDOWN
+   GET /staff/branches */
+
+router.get(
+  "/branches",
+  auth,
+  role(["staff", "branchAdmin", "doctor", "superAdmin"]),
+  async (req, res) => {
+    try {
+      const wantAll = String(req.query.all || "") === "1" && canSeeAll(req);
+
+      const filter = { isActive: { $ne: false } };
+
+      if (!wantAll) {
+        const bid = req.user?.branchId;
+        if (!bid) {
+          return res.status(400).json({ error: "branchId required" });
+        }
+        filter._id = bid;
+      }
+
+      const branches = await Branch.find(filter)
+        .select("branchName name code")
+        .lean();
+
+      res.json({ data: branches });
+    } catch (err) {
+      console.error("list branches err", err);
+      res.status(500).json({ error: "SERVER_ERROR" });
+    }
+  }
+);
+
+/* BRANCH DETAIL (ใช้ใน PetDetail)
+   GET /staff/branches/:id */
+
+router.get(
+  "/branches/:id",
+  auth,
+  role(["staff", "branchAdmin", "doctor", "superAdmin"]),
+  async (req, res) => {
+    try {
+      const { id } = req.params;
+      if (!isOid(id)) {
+        return res.status(400).json({ error: "branchId ไม่ถูกต้อง" });
+      }
+
+      if (!canSeeAll(req)) {
+        const check = assertBranch(req, id);
+        if (!check.ok) {
+          return res.status(403).json({ error: check.error });
+        }
+      }
+
+      const branch = await Branch.findById(id)
+        .select("branchName name code addressBranch phone")
+        .lean();
+      if (!branch) {
+        return res.status(404).json({ error: "Branch not found" });
+      }
+
+      res.json(branch);
+    } catch (err) {
+      console.error("branch detail err", err);
       res.status(500).json({ error: "SERVER_ERROR" });
     }
   }

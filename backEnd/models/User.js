@@ -22,18 +22,34 @@ const AttachmentSchema = new Schema({
   uploadedBy: { type: Schema.Types.ObjectId, ref: 'User', default: null }
 }, { _id: false });
 
+/** ยาที่ใช้ในหนึ่ง treatment (หลายตัวได้) */
+const MedicineUsageSchema = new Schema({
+  medicineId: { type: Schema.Types.ObjectId, ref: 'Branch.medicines._id', required: true },
+  medicineNameSnapshot: { type: String, required: true },
+  quantityUsed: { type: Number, default: 1 },
+}, { _id: true });
+
 const TreatmentSchema = new Schema({
   symptoms: { type: String, default: null },
   diagnosis: { type: String, default: null },
   notes: { type: String, default: null },
+
   branchId: { type: Schema.Types.ObjectId, ref: 'Branch', required: true },
-  medicineId: { type: Schema.Types.ObjectId, required: true }, // ref to Branch.medicines._id
-  medicineNameSnapshot: { type: String, required: true },
-  quantityUsed: { type: Number, default: 1 },
-  treatmentDate: { type: Date, default: Date.now },
+  branchNameSnapshot: { type: String, default: null },
+
+  // หมอที่รักษา
   staffId: { type: Schema.Types.ObjectId, ref: 'User', default: null },
+  doctorNameSnapshot: { type: String, default: null },
+
+  // หลายยาใน 1 เคส
+  medicines: { type: [MedicineUsageSchema], default: [] },
+  medicineId: { type: Schema.Types.ObjectId, default: null },
+  medicineNameSnapshot: { type: String, default: null },
+  quantityUsed: { type: Number, default: 0 },
+  treatmentDate: { type: Date, default: Date.now },
   attachments: { type: [AttachmentSchema], default: [] }
 }, { _id: true, timestamps: true });
+
 
 const VaccinationSchema = new Schema({
   branchId: { type: Schema.Types.ObjectId, ref: 'Branch', required: true },

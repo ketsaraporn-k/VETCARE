@@ -1,4 +1,3 @@
-// backEnd/staff/vaccinationManage.js
 const express = require("express");
 const mongoose = require("mongoose");
 const auth = require("../middleware/auth");
@@ -28,11 +27,94 @@ function toDateOrNull(v, fieldName) {
   return d;
 }
 
+/**
+ * ตัดสต็อกจาก Branch.medicines แบบ FIFO ตาม expiryDate
+ * คืน snapshot สำหรับเก็บใน vaccination
+ */
+async function deductStock(branchDoc, medicineId, qtyUsed) {
+  if (!branchDoc || !medicineId) return null;
+
+  const useQty = Number(qtyUsed || 0);
+  if (useQty <= 0) return null;
+
+  const med = branchDoc.medicines.id(medicineId);
+  if (!med) {
+    const err = new Error("ไม่พบรายการยา/วัคซีนในสาขา");
+    err.statusCode = 400;
+    throw err;
+  }
+
+  const currentStock = Number(med.stock || 0);
+  if (currentStock < useQty) {
+    const err = new Error("สต็อกไม่เพียงพอ");
+    err.statusCode = 400;
+    throw err;
+  }
+
+  const batches = med.batches || [];
+  // FIFO: batch หมดอายุก่อน ใช้ก่อน
+  batches.sort((a, b) => {
+    const ea = a.expiryDate ? new Date(a.expiryDate).getTime() : Infinity;
+    const eb = b.expiryDate ? new Date(b.expiryDate).getTime() : Infinity;
+    return ea - eb;
+  });
+
+  let remain = useQty;
+  let firstBatchUsed = null;
+
+  for (const bt of batches) {
+    if (!bt || bt.qty <= 0) continue;
+    if (remain <= 0) break;
+
+    const take = Math.min(bt.qty, remain);
+    if (take <= 0) continue;
+
+    if (!firstBatchUsed) {
+      firstBatchUsed = bt;
+    }
+
+    bt.qty -= take;
+    remain -= take;
+  }
+
+  // กันเคสไม่มี batch แต่ stock โดยรวมพอ
+  if ((!batches.length || !firstBatchUsed) && currentStock >= useQty) {
+    remain = 0;
+  }
+
+  if (remain > 0) {
+    const err = new Error("สต็อกใน batch ไม่เพียงพอ");
+    err.statusCode = 400;
+    throw err;
+  }
+
+  med.stock = currentStock - useQty;
+
+  const threshold =
+    typeof med.lowStockThreshold === "number" ? med.lowStockThreshold : 0;
+  med.lowStockAlert = threshold > 0 && med.stock <= threshold;
+
+  branchDoc.markModified("medicines");
+  await branchDoc.save();
+
+  return firstBatchUsed
+    ? {
+        batchId: firstBatchUsed.batchId || null,
+        expiryDate: firstBatchUsed.expiryDate || null,
+        medicineName: med.medicineName,
+      }
+    : {
+        batchId: null,
+        expiryDate: null,
+        medicineName: med.medicineName,
+      };
+}
+
 // POST /api/staff/vaccinations/:ownerId/:petId
 router.post(
   "/:ownerId/:petId",
   auth,
-  role(["staff", "branchAdmin", "doctor", "superAdmin"]),
+  role(["staff", "branchAdmin", "doctor"]),
   async (req, res) => {
     try {
       const { ownerId, petId } = req.params;
@@ -78,17 +160,52 @@ router.post(
         ? toDateOrNull(req.body.nextDueDate, "nextDueDate")
         : null;
 
+      const doseQty = Number(req.body.doseQty || 1);
+
+      let stockSnapshot = null;
+      let finalMedicineId = null;
+
+      const bodyMedId = req.body.medicineId;
+      const hasMedicineId = bodyMedId && isOid(bodyMedId);
+
+      // กรณีเลือก medicineId จาก stock โดยตรง
+      if (hasMedicineId && doseQty > 0) {
+        stockSnapshot = await deductStock(branch, bodyMedId, doseQty);
+        finalMedicineId = bodyMedId;
+      } else {
+        // ไม่ได้ส่ง medicineId → พยายาม match ชื่อกับ medicine category='vaccine'
+        const needle = vaccineTypeRaw.toLowerCase();
+        const candidate = (branch.medicines || []).find((m) => {
+          const name = (m.medicineName || "").toLowerCase();
+          const cat = (m.category || "").toLowerCase();
+          return cat === "vaccine" && name.includes(needle);
+        });
+
+        if (candidate && doseQty > 0) {
+          stockSnapshot = await deductStock(branch, candidate._id, doseQty);
+          finalMedicineId = candidate._id;
+        }
+      }
+
       const v = {
         branchId,
+        medicineId: finalMedicineId,
+        medicineNameSnapshot:
+          (stockSnapshot && stockSnapshot.medicineName) ||
+          req.body.vaccineName ||
+          vaccineTypeRaw,
         vaccineType: vaccineTypeRaw,
-        medicineId: req.body.medicineId || null,
-        medicineNameSnapshot: req.body.vaccineName || vaccineTypeRaw,
-        doseQty: Number(req.body.doseQty || 1),
-        batch: req.body.batch || null,
+        doseQty,
+        batch:
+          (stockSnapshot && stockSnapshot.batchId) ||
+          req.body.batch ||
+          null,
         note: req.body.note || "",
-        expiryDate: req.body.expiryDate
-          ? toDateOrNull(req.body.expiryDate, "expiryDate")
-          : null,
+        expiryDate:
+          (stockSnapshot && stockSnapshot.expiryDate) ||
+          (req.body.expiryDate
+            ? toDateOrNull(req.body.expiryDate, "expiryDate")
+            : null),
         dateGiven,
         nextDueDate,
         staffId: req.user.id || null,
@@ -268,21 +385,19 @@ router.get(
 router.delete(
   "/:ownerId/:petId/:vacId",
   auth,
-  role(["staff", "branchAdmin", "doctor", "superAdmin"]),
+  role(["branchAdmin", "doctor"]),
   async (req, res) => {
     try {
       const { ownerId, petId, vacId } = req.params;
 
-      // validate ids ชัดเจน
-      const isOid = (v) => mongoose.isValidObjectId(String(v || ""));
-      if (![ownerId, petId, vacId].every(isOid)) {
+      const isOidLocal = (v) => mongoose.isValidObjectId(String(v || ""));
+      if (![ownerId, petId, vacId].every(isOidLocal)) {
         return res.status(400).json({ error: "Invalid id(s)" });
       }
 
       const owner = await User.findById(ownerId);
       if (!owner) return res.status(404).json({ error: "Owner not found" });
 
-      // สิทธิ์สาขา
       const branchCheck = assertBranch(req, owner.branchId);
       if (!branchCheck.ok) {
         return res.status(403).json({ error: branchCheck.error });
@@ -291,7 +406,6 @@ router.delete(
       const pet = owner.pets.id(petId);
       if (!pet) return res.status(404).json({ error: "Pet not found" });
 
-      // หา vaccination
       const idx = (pet.vaccinations || []).findIndex(
         (v) => String(v._id) === String(vacId)
       );
@@ -299,10 +413,8 @@ router.delete(
         return res.status(404).json({ error: "Vaccination not found" });
       }
 
-      // ลบแบบ splice เพื่อเลี่ยงปัญหา remove/deleteOne บางเวอร์ชัน
       pet.vaccinations.splice(idx, 1);
-
-      await owner.save(); // persist
+      await owner.save();
 
       return res.json({ message: "Deleted", id: vacId });
     } catch (err) {

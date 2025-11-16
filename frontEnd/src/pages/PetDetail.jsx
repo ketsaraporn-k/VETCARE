@@ -1,8 +1,7 @@
-// src/pages/PetDetail.jsx
 import React, { useEffect, useMemo, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import api from "../api/axiosConfig";
-import "./StaffPets.css";
+import "../layout/StaffPets.css";
 
 import TreatmentHistory from "./TreatmentHistory";
 import VaccinationHistory from "./VaccinationHistory";
@@ -10,6 +9,7 @@ import { SPECIES_OPTIONS, BREED_OPTIONS } from "../constants/pets";
 
 const StaffPetDetail = ({ user: userFromApp }) => {
   const { ownerId, petId } = useParams();
+
   const [pet, setPet] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -19,13 +19,15 @@ const StaffPetDetail = ({ user: userFromApp }) => {
     species: "",
     breed: "",
     dob: "",
+    allergies: [], // {name,note}
   });
 
   const [extraSpecies, setExtraSpecies] = useState([]);
-  const [extraBreeds, setExtraBreeds] = useState({}); // { [speciesKey]: [{value,label}] }
-
+  const [extraBreeds, setExtraBreeds] = useState({});
   const [showSpeciesList, setShowSpeciesList] = useState(false);
   const [showBreedList, setShowBreedList] = useState(false);
+
+  const [branchName, setBranchName] = useState("-");
 
   const user = useMemo(() => {
     if (userFromApp) return userFromApp;
@@ -38,58 +40,23 @@ const StaffPetDetail = ({ user: userFromApp }) => {
 
   const canManage =
     !!user &&
-    ["staff", "doctor", "branchadmin", "branchadmin", "superadmin", "superadmin"].includes(
+    ["staff", "doctor", "branchadmin", "superadmin"].includes(
       String(user.role || "").toLowerCase()
     );
 
-  useEffect(() => {
-    try {
-      const s = JSON.parse(localStorage.getItem("extraSpecies") || "[]");
-      const b = JSON.parse(localStorage.getItem("extraBreeds") || "{}");
-      if (Array.isArray(s)) setExtraSpecies(s);
-      if (b && typeof b === "object") setExtraBreeds(b);
-    } catch {
-      /* ignore */
-    }
-  }, []);
-
-  useEffect(() => {
-    let alive = true;
-    setLoading(true);
-
-    api
-      .get(`/api/staff/pets/${ownerId}/${petId}`)
-      .then((res) => {
-        if (!alive) return;
-        const data = res.data || {};
-        setPet(data);
-
-        const dobRaw = data.birthDate || data.dob || data.age || "";
-        setEditForm({
-          name: data.name || "",
-          species: data.species || "",
-          breed: data.breed || "",
-          dob: dobRaw ? new Date(dobRaw).toISOString().slice(0, 10) : "",
-        });
-      })
-      .catch((err) => {
-        console.error("load pet error:", err);
-        if (alive) setPet(null);
-      })
-      .finally(() => {
-        if (alive) setLoading(false);
-      });
-
-    return () => {
-      alive = false;
-    };
-  }, [ownerId, petId]);
-
+  // helpers
   const slug = (str) =>
     String(str || "")
       .trim()
       .toLowerCase()
       .replace(/\s+/g, "-");
+
+  const safeDateForInput = (val) => {
+    if (!val) return "";
+    const d = new Date(val);
+    if (Number.isNaN(d.getTime())) return "";
+    return d.toISOString().slice(0, 10);
+  };
 
   const formatAge = (dobStr) => {
     if (!dobStr) return "-";
@@ -115,10 +82,86 @@ const StaffPetDetail = ({ user: userFromApp }) => {
     return parts.join(" ") || "0 เดือน";
   };
 
+  // extra species/breeds
+  useEffect(() => {
+    try {
+      const s = JSON.parse(localStorage.getItem("extraSpecies") || "[]");
+      const b = JSON.parse(localStorage.getItem("extraBreeds") || "{}");
+      if (Array.isArray(s)) setExtraSpecies(s);
+      if (b && typeof b === "object") setExtraBreeds(b);
+    } catch {
+      //
+    }
+  }, []);
+
+  // load pet
+  useEffect(() => {
+    let alive = true;
+    setLoading(true);
+
+    api
+      .get(`/api/staff/pets/${ownerId}/${petId}`)
+      .then(async (res) => {
+        if (!alive) return;
+        const data = res.data || {};
+
+        const dobRaw =
+          data.metadata?.birthDate ||
+          data.birthDate ||
+          data.dob ||
+          data.age ||
+          "";
+
+        const allergiesArr = Array.isArray(data.drugAllergies)
+          ? data.drugAllergies.map((a) => ({
+              name: a.name || "",
+              note: a.note || "",
+              _id: a._id,
+            }))
+          : [];
+
+        setPet(data);
+        setEditForm({
+          name: data.name || "",
+          species: data.species || "",
+          breed: data.breed || "",
+          dob: safeDateForInput(dobRaw),
+          allergies: allergiesArr,
+        });
+
+        const ownerBranchId = data.owner?.branchId || data.branchId;
+        const inlineBranchName = data.owner?.branchName || data.branchName;
+        if (inlineBranchName) {
+          setBranchName(inlineBranchName);
+        } else if (ownerBranchId) {
+          try {
+            const bRes = await api.get(`/api/branches/${ownerBranchId}`);
+            const b = bRes.data || {};
+            setBranchName(b.branchName || b.name || String(ownerBranchId));
+          } catch {
+            setBranchName(String(ownerBranchId));
+          }
+        } else {
+          setBranchName("-");
+        }
+      })
+      .catch((err) => {
+        console.error("load pet error:", err);
+        if (alive) setPet(null);
+      })
+      .finally(() => {
+        if (alive) setLoading(false);
+      });
+
+    return () => {
+      alive = false;
+    };
+  }, [ownerId, petId]);
+
   if (loading) return <p className="staffpet-loading">Loading...</p>;
   if (!pet) return <p className="staffpet-loading">Pet not found.</p>;
 
-  // ===== options & autocomplete =====
+  // options & autocomplete
   const allSpeciesOptions = [...SPECIES_OPTIONS, ...extraSpecies];
 
   const normalizedSpecies = editForm.species.trim().toLowerCase();
@@ -151,8 +194,16 @@ const StaffPetDetail = ({ user: userFromApp }) => {
           (b.label + b.value).toLowerCase().includes(normalizedBreed)
         );
 
-  const dobDisplay =
-    pet.birthDate || pet.dob || pet.age || editForm.dob || "";
+  const dobRaw =
+    pet.metadata?.birthDate ||
+    pet.birthDate ||
+    pet.dob ||
+    pet.age ||
+    editForm.dob ||
+    "";
+
+  const dobDisplay = dobRaw;
+  const ageText = formatAge(dobRaw);
 
   const handleChange = (field, value) => {
     setEditForm((f) => ({ ...f, [field]: value }));
@@ -160,12 +211,25 @@ const StaffPetDetail = ({ user: userFromApp }) => {
 
   const handleCancelEdit = () => {
     if (!pet) return;
-    const dobRaw = pet.birthDate || pet.dob || pet.age || "";
+    const raw =
+      pet.metadata?.birthDate ||
+      pet.birthDate ||
+      pet.dob ||
+      pet.age ||
+      "";
+    const allergiesArr = Array.isArray(pet.drugAllergies)
+      ? pet.drugAllergies.map((a) => ({
+          name: a.name || "",
+          note: a.note || "",
+          _id: a._id,
+        }))
+      : [];
     setEditForm({
       name: pet.name || "",
       species: pet.species || "",
       breed: pet.breed || "",
-      dob: dobRaw ? new Date(dobRaw).toISOString().slice(0, 10) : "",
+      dob: safeDateForInput(raw),
+      allergies: allergiesArr,
     });
     setEditing(false);
     setShowSpeciesList(false);
@@ -177,7 +241,7 @@ const StaffPetDetail = ({ user: userFromApp }) => {
       localStorage.setItem("extraSpecies", JSON.stringify(newExtraSpecies));
       localStorage.setItem("extraBreeds", JSON.stringify(newExtraBreeds));
     } catch {
-      /* ignore */
+      //
     }
   };
 
@@ -189,6 +253,7 @@ const StaffPetDetail = ({ user: userFromApp }) => {
   ) => {
     const speciesLower = speciesValue.toLowerCase();
     const allSpecies = [...SPECIES_OPTIONS, ...extraSpecies];
+
     const hasSpecies = allSpecies.some(
       (s) =>
         s.value.toLowerCase() === speciesLower ||
@@ -228,19 +293,37 @@ const StaffPetDetail = ({ user: userFromApp }) => {
 
   const handleSave = async () => {
     try {
+      const metadata = {
+        ...(pet.metadata || {}),
+        birthDate: editForm.dob || null,
+      };
+
+      const allergiesPayload = (editForm.allergies || [])
+        .filter((a) => a.name && a.name.trim())
+        .map((a) => ({
+          name: a.name.trim(),
+          note: a.note?.trim() || null,
+        }));
+
       const body = {
         name: editForm.name.trim(),
         species: editForm.species.trim(),
         breed: editForm.breed.trim(),
-        age: editForm.dob ? new Date(editForm.dob).toISOString().slice(0, 10) : "",
+        age: editForm.dob
+          ? new Date(editForm.dob).toISOString().slice(0, 10)
+          : pet.age || "",
+        metadata,
+        drugAllergies: allergiesPayload,
       };
 
       const res = await api.put(`/api/staff/pets/${ownerId}/${petId}`, body);
-      const updated = res.data || body;
+      const updated = res.data?.pet || res.data || body;
 
       setPet((prev) => ({
         ...(prev || {}),
         ...updated,
+        metadata,
+        drugAllergies: allergiesPayload,
       }));
 
       const finalSpeciesLabel =
@@ -268,16 +351,32 @@ const StaffPetDetail = ({ user: userFromApp }) => {
     }
   };
 
-  const ageText = formatAge(dobDisplay);
+  const allergies = Array.isArray(pet.drugAllergies)
+    ? pet.drugAllergies
+    : [];
 
-  const branchLabel =
-    pet.owner?.branchName ||
-    pet.branchName ||
-    (pet.owner?.branchId
-      ? String(pet.owner.branchId).slice(-5)
-      : pet.branchId
-      ? String(pet.branchId).slice(-5)
-      : "-");
+  // edit allergy helpers
+  const updateAllergyField = (index, field, value) => {
+    setEditForm((f) => {
+      const next = [...(f.allergies || [])];
+      next[index] = { ...(next[index] || {}), [field]: value };
+      return { ...f, allergies: next };
+    });
+  };
+
+  const addAllergy = () => {
+    setEditForm((f) => ({
+      ...f,
+      allergies: [...(f.allergies || []), { name: "", note: "" }],
+    }));
+  };
+
+  const removeAllergy = (index) => {
+    setEditForm((f) => ({
+      ...f,
+      allergies: (f.allergies || []).filter((_, i) => i !== index),
+    }));
+  };
 
   return (
     <div className="staffpet-detail-page">
@@ -294,7 +393,9 @@ const StaffPetDetail = ({ user: userFromApp }) => {
         {canManage && (
           <button
             className="staffpet-button staffpet-button-primary"
-            onClick={() => setEditing((e) => !e)}
+            onClick={() =>
+              editing ? handleCancelEdit() : setEditing(true)
+            }
           >
             {editing ? "Cancel Edit" : "Edit Pet"}
           </button>
@@ -303,6 +404,7 @@ const StaffPetDetail = ({ user: userFromApp }) => {
 
       <div className="staffpet-info-card">
         <div className="staffpet-avatar">
+          {/* ภายหลังค่อยดึงจากรูป owner/pet */}
           <span role="img" aria-label="pet">
             🐾
           </span>
@@ -315,7 +417,7 @@ const StaffPetDetail = ({ user: userFromApp }) => {
               <strong>Owner:</strong> {pet.owner?.name || "-"}
             </p>
             <p>
-              <strong>Branch:</strong> {branchLabel}
+              <strong>Branch:</strong> {branchName}
             </p>
             <p>
               <strong>Species:</strong> {pet.species || "-"}
@@ -325,11 +427,28 @@ const StaffPetDetail = ({ user: userFromApp }) => {
             </p>
             <p>
               <strong>Date of Birth:</strong>{" "}
-              {dobDisplay ? dobDisplay.toString().slice(0, 10) : "-"}
+              {dobDisplay ? String(dobDisplay).slice(0, 10) : "-"}
             </p>
             <p>
               <strong>Age:</strong> {ageText}
             </p>
+
+            <p>
+              <strong>Drug Allergies:</strong>{" "}
+              {allergies.length === 0 && "No known drug allergies"}
+            </p>
+            {allergies.length > 0 && (
+              <ul className="staffpet-allergy-list">
+                {allergies.map((a) => (
+                  <li key={a._id || a.name}>
+                    <span className="allergy-name">{a.name}</span>
+                    {a.note && (
+                      <span className="allergy-note"> — {a.note}</span>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            )}
           </div>
         ) : (
           <div className="staffpet-info-details staffpet-edit-form">
@@ -356,9 +475,9 @@ const StaffPetDetail = ({ user: userFromApp }) => {
                       setShowSpeciesList(true);
                     }}
                     onFocus={() => setShowSpeciesList(true)}
-                    onBlur={() => {
-                      setTimeout(() => setShowSpeciesList(false), 150);
-                    }}
+                    onBlur={() =>
+                      setTimeout(() => setShowSpeciesList(false), 150)
+                    }
                     placeholder="Start typing species..."
                   />
                   {showSpeciesList && speciesSuggestions.length > 0 && (
@@ -393,9 +512,9 @@ const StaffPetDetail = ({ user: userFromApp }) => {
                       setShowBreedList(true);
                     }}
                     onFocus={() => setShowBreedList(true)}
-                    onBlur={() => {
-                      setTimeout(() => setShowBreedList(false), 150);
-                    }}
+                    onBlur={() =>
+                      setTimeout(() => setShowBreedList(false), 150)
+                    }
                     placeholder="Start typing breed..."
                   />
                   {showBreedList && breedSuggestions.length > 0 && (
@@ -427,6 +546,49 @@ const StaffPetDetail = ({ user: userFromApp }) => {
                   value={editForm.dob}
                   onChange={(e) => handleChange("dob", e.target.value)}
                 />
+              </label>
+            </div>
+
+            <div className="staffpet-edit-row">
+              <label>
+                Drug Allergies
+                <div className="allergy-edit-list">
+                  {(editForm.allergies || []).map((a, idx) => (
+                    <div key={idx} className="allergy-edit-row">
+                      <input
+                        className="staffpet-input"
+                        placeholder="Drug name"
+                        value={a.name}
+                        onChange={(e) =>
+                          updateAllergyField(idx, "name", e.target.value)
+                        }
+                      />
+                      <input
+                        className="staffpet-input"
+                        placeholder="Note (optional)"
+                        value={a.note || ""}
+                        onChange={(e) =>
+                          updateAllergyField(idx, "note", e.target.value)
+                        }
+                      />
+                      <button
+                        type="button"
+                        className="staffpet-button staffpet-button-ghost"
+                        onClick={() => removeAllergy(idx)}
+                      >
+                        ×
+                      </button>
+                    </div>
+                  ))}
+                  <button
+                    type="button"
+                    className="staffpet-button staffpet-button-secondary"
+                    onClick={addAllergy}
+                    style={{ marginTop: "8px" }}
+                  >
+                    + Add Allergy
+                  </button>
+                </div>
               </label>
             </div>
 

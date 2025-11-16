@@ -1,8 +1,7 @@
-// src/pages/Pets.jsx
 import React, { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import api from "../api/axiosConfig";
-import "./StaffPets.css";
+import "../layout/StaffPets.css";
 import { SPECIES_OPTIONS, BREED_OPTIONS } from "../constants/pets";
 
 const StaffPets = ({ user: userFromApp }) => {
@@ -16,8 +15,8 @@ const StaffPets = ({ user: userFromApp }) => {
   // modal เพิ่มสัตว์ใหม่
   const [showAddModal, setShowAddModal] = useState(false);
   const [addForm, setAddForm] = useState({
-    ownerId: "",          // id จริง
-    ownerKeyword: "",     // ข้อความที่ใช้ค้นหา/แสดง
+    ownerId: "", // id จริง
+    ownerKeyword: "", // ข้อความที่ใช้ค้นหา/แสดง
     branchIdOverride: "",
     name: "",
     species: "",
@@ -34,6 +33,10 @@ const StaffPets = ({ user: userFromApp }) => {
   const [showOwnerList, setShowOwnerList] = useState(false);
   const [ownerLoading, setOwnerLoading] = useState(false);
 
+  // สาขาสำหรับ superAdmin
+  const [branches, setBranches] = useState([]);
+  const [branchFilter, setBranchFilter] = useState("all");
+
   const user = useMemo(() => {
     if (userFromApp) return userFromApp;
     try {
@@ -46,47 +49,34 @@ const StaffPets = ({ user: userFromApp }) => {
   const role = String(user?.role || "").toLowerCase();
   const isSuper = role === "superadmin";
 
-  const fetchPets = async () => {
-    if (!user) return;
-    setLoading(true);
-    try {
-      const params = { q, page, pageSize };
-
-      if (isSuper) {
-        params.all = 1;
-      } else {
-        params.branchId = user.branchId;
-      }
-
-      const res = await api.get("/api/staff/pets", { params });
-      setPets(res.data?.data || []);
-      setTotal(res.data?.total || 0);
-    } catch (err) {
-      console.error("Error fetching pets:", err);
-      setPets([]);
-      setTotal(0);
-    } finally {
-      setLoading(false);
-    }
-  };
-
+  // fetch รายชื่อสาขา (ใช้ใน dropdown ของ superAdmin) 
   useEffect(() => {
-    fetchPets();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [q, page, pageSize, user?.branchId, role]);
+    if (!isSuper) return;
 
-  if (loading) return <p className="staffpet-loading">Loading pets...</p>;
+    let alive = true;
+    api
+      .get("/api/staff/branches", { params: { all: 1 } })
+      .then((res) => {
+        if (!alive) return;
+        const list = res.data?.data || res.data || [];
+        setBranches(list);
+      })
+      .catch((err) => {
+        console.error("Error fetching branches list:", err);
+        setBranches([]);
+      });
 
-  const pages = Math.max(1, Math.ceil(total / pageSize));
+    return () => {
+      alive = false;
+    };
+  }, [isSuper]);
 
-  // ---------- helper: species / breed ----------
+  // helper สำหรับ normalize species / breed 
   const normalizeSpeciesKey = (input) => {
     const n = String(input || "").toLowerCase().trim();
     if (!n) return "";
     const found = SPECIES_OPTIONS.find(
-      (s) =>
-        s.value.toLowerCase() === n ||
-        s.label.toLowerCase() === n
+      (s) => s.value.toLowerCase() === n || s.label.toLowerCase() === n
     );
     return found ? found.value.toLowerCase() : n;
   };
@@ -136,15 +126,26 @@ const StaffPets = ({ user: userFromApp }) => {
     return parts.join(" ");
   };
 
-  // ---------- search เจ้าของจากชื่อ / id ----------
+  // แสดงชื่อสาขาในตาราง (branchName > owner.branchName > code > id) 
+  const getBranchLabel = (pet) => {
+    return (
+      pet.branchName ||
+      pet.owner?.branchName ||
+      pet.branch?.branchName ||
+      pet.branch?.name ||
+      (pet.branchId ? String(pet.branchId).slice(-5) : "-")
+    );
+  };
+
+  // search เจ้าของจากชื่อ / id 
   const searchOwners = async (keyword) => {
-    const q = keyword.trim();
+    const text = keyword.trim();
     setOwnerOptions([]);
-    if (q.length < 2) return; // กัน spam
+    if (text.length < 2) return; // กัน spam
 
     setOwnerLoading(true);
     try {
-      const params = { q };
+      const params = { q: text };
 
       if (isSuper) {
         params.all = 1;
@@ -162,7 +163,48 @@ const StaffPets = ({ user: userFromApp }) => {
     }
   };
 
-  // ---------- submit เพิ่มสัตว์ใหม่ ----------
+  // ดึงรายชื่อ pets 
+  const fetchPets = async () => {
+    if (!user) return;
+    setLoading(true);
+    try {
+      const params = { q, page, pageSize };
+
+      if (isSuper) {
+        if (branchFilter && branchFilter !== "all") {
+          // superAdmin เลือกดูเฉพาะสาขา
+          params.branchId = branchFilter;
+        } else {
+          // superAdmin ดูทุกสาขา
+          params.all = 1;
+        }
+      } else {
+        // staff / branchAdmin / doctor: ดูเฉพาะสาขาของตัวเอง
+        params.branchId = user.branchId;
+      }
+
+      const res = await api.get("/api/staff/pets", { params });
+      setPets(res.data?.data || []);
+      setTotal(res.data?.total || 0);
+    } catch (err) {
+      console.error("Error fetching pets:", err);
+      setPets([]);
+      setTotal(0);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchPets();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [q, page, pageSize, user?.branchId, role, branchFilter]);
+
+  if (loading) return <p className="staffpet-loading">Loading pets...</p>;
+
+  const pages = Math.max(1, Math.ceil(total / pageSize));
+
+  // submit เพิ่มสัตว์ใหม่ 
   const submitAddPet = async (e) => {
     e.preventDefault();
 
@@ -176,11 +218,15 @@ const StaffPets = ({ user: userFromApp }) => {
     }
 
     const branchId = isSuper
-      ? (addForm.branchIdOverride || user?.branchId)
-      : user?.branchId;
+      ? addForm.branchIdOverride // superAdmin ต้องเลือกจาก dropdown
+      : user?.branchId; // role อื่นใช้ branch ของ user ปัจจุบัน
 
     if (!branchId) {
-      alert("branchId missing (สำหรับ superAdmin ต้องกรอก Branch ID ด้วย)");
+      alert(
+        isSuper
+          ? "กรุณาเลือกสาขา (Branch) ก่อนบันทึก"
+          : "branchId missing (ต้องมี branchId ของผู้ใช้ปัจจุบัน)"
+      );
       return;
     }
 
@@ -223,13 +269,13 @@ const StaffPets = ({ user: userFromApp }) => {
       await fetchPets();
     } catch (err) {
       console.error("create pet error:", err);
-      alert(
-        err.response?.data?.error ||
-          "สร้างข้อมูลสัตว์ไม่สำเร็จ"
-      );
+      alert(err.response?.data?.error || "สร้างข้อมูลสัตว์ไม่สำเร็จ");
     }
   };
 
+  // -------------------------------------------------------------------
+  // Render
+  // -------------------------------------------------------------------
   return (
     <div className="staffpet-container">
       <h2 className="staffpet-title">
@@ -246,6 +292,24 @@ const StaffPets = ({ user: userFromApp }) => {
             setQ(e.target.value);
           }}
         />
+
+        {isSuper && (
+          <select
+            className="staffpet-branch-filter"
+            value={branchFilter}
+            onChange={(e) => {
+              setPage(1);
+              setBranchFilter(e.target.value);
+            }}
+          >
+            <option value="all">All branches</option>
+            {branches.map((b) => (
+              <option key={b._id || b.id} value={b._id || b.id}>
+                {b.branchName || b.name || String(b.code || "").toUpperCase()}
+              </option>
+            ))}
+          </select>
+        )}
 
         <button
           className="staffpet-button staffpet-button-primary"
@@ -273,9 +337,7 @@ const StaffPets = ({ user: userFromApp }) => {
               <td>{pet.name || "-"}</td>
               <td>{pet.species || "-"}</td>
               <td>{pet.owner?.name || "-"}</td>
-              {isSuper && (
-                <td>{pet.branchId ? String(pet.branchId).slice(-5) : "-"}</td>
-              )}
+              {isSuper && <td>{getBranchLabel(pet)}</td>}
               <td>
                 <Link
                   to={`/pet-detail/${pet.owner?.id}/${pet._id}`}
@@ -345,7 +407,7 @@ const StaffPets = ({ user: userFromApp }) => {
                       setAddForm({
                         ...addForm,
                         ownerKeyword: value,
-                        ownerId: "", // reset id ถ้าพิมพ์ใหม่
+                        ownerId: "",
                       });
                       setShowOwnerList(true);
                       searchOwners(value);
@@ -358,7 +420,7 @@ const StaffPets = ({ user: userFromApp }) => {
                     onBlur={() =>
                       setTimeout(() => setShowOwnerList(false), 150)
                     }
-                    placeholder="เช่น Nancy, 6602..., ObjectId ฯลฯ"
+                    placeholder="เช่น Nancy, 6602...,"
                   />
                   {ownerLoading && (
                     <div className="staffpet-autocomplete-hint">
@@ -377,18 +439,17 @@ const StaffPets = ({ user: userFromApp }) => {
                               setAddForm({
                                 ...addForm,
                                 ownerId: o.id || o._id,
-                                ownerKeyword: `${o.name} (${o.username || shortId})`,
+                                ownerKeyword: `${o.name} (${
+                                  o.username || shortId
+                                })`,
                               });
                               setShowOwnerList(false);
                             }}
                           >
                             <div className="owner-main">
-                              {o.name}{" "}
-                              {o.username ? `(${o.username})` : ""}
+                              {o.name} {o.username ? `(${o.username})` : ""}
                             </div>
-                            <div className="owner-sub">
-                              ID: {shortId}
-                            </div>
+                            <div className="owner-sub">ID: {shortId}</div>
                           </li>
                         );
                       })}
@@ -399,8 +460,8 @@ const StaffPets = ({ user: userFromApp }) => {
 
               {isSuper && (
                 <label>
-                  Branch ID (สำหรับ SuperAdmin)
-                  <input
+                  Branch (สำหรับ SuperAdmin เวลาเพิ่ม pet)
+                  <select
                     className="staffpet-input"
                     value={addForm.branchIdOverride}
                     onChange={(e) =>
@@ -409,8 +470,17 @@ const StaffPets = ({ user: userFromApp }) => {
                         branchIdOverride: e.target.value,
                       })
                     }
-                    placeholder="ถ้าไม่ใส่ จะใช้ branchId ของผู้ใช้ปัจจุบัน"
-                  />
+                    required
+                  >
+                    <option value="">เลือกสาขา...</option>
+                    {branches.map((b) => (
+                      <option key={b._id || b.id} value={b._id || b.id}>
+                        {b.branchName ||
+                          b.name ||
+                          String(b.code || "").toUpperCase()}
+                      </option>
+                    ))}
+                  </select>
                 </label>
               )}
 
@@ -445,26 +515,27 @@ const StaffPets = ({ user: userFromApp }) => {
                     }
                     placeholder="เช่น Dog, Cat, Rabbit..."
                   />
-                  {showSpeciesList && filteredSpeciesOptions.length > 0 && (
-                    <ul className="staffpet-autocomplete-list">
-                      {filteredSpeciesOptions.slice(0, 8).map((opt) => (
-                        <li
-                          key={opt.value}
-                          className="staffpet-autocomplete-item"
-                          onMouseDown={() => {
-                            setAddForm({
-                              ...addForm,
-                              species: opt.label,
-                              breed: "", // reset breed เมื่อเปลี่ยน species
-                            });
-                            setShowSpeciesList(false);
-                          }}
-                        >
-                          {opt.label}
-                        </li>
-                      ))}
-                    </ul>
-                  )}
+                  {showSpeciesList &&
+                    filteredSpeciesOptions.length > 0 && (
+                      <ul className="staffpet-autocomplete-list">
+                        {filteredSpeciesOptions.slice(0, 8).map((opt) => (
+                          <li
+                            key={opt.value}
+                            className="staffpet-autocomplete-item"
+                            onMouseDown={() => {
+                              setAddForm({
+                                ...addForm,
+                                species: opt.label,
+                                breed: "",
+                              });
+                              setShowSpeciesList(false);
+                            }}
+                          >
+                            {opt.label}
+                          </li>
+                        ))}
+                      </ul>
+                    )}
                 </div>
               </label>
 
@@ -491,25 +562,26 @@ const StaffPets = ({ user: userFromApp }) => {
                         : "เริ่มพิมพ์เพื่อค้นหาสายพันธุ์"
                     }
                   />
-                  {showBreedList && filteredBreedOptions.length > 0 && (
-                    <ul className="staffpet-autocomplete-list">
-                      {filteredBreedOptions.slice(0, 10).map((opt) => (
-                        <li
-                          key={opt.value}
-                          className="staffpet-autocomplete-item"
-                          onMouseDown={() => {
-                            setAddForm({
-                              ...addForm,
-                              breed: opt.label,
-                            });
-                            setShowBreedList(false);
-                          }}
-                        >
-                          {opt.label}
-                        </li>
-                      ))}
-                    </ul>
-                  )}
+                  {showBreedList &&
+                    filteredBreedOptions.length > 0 && (
+                      <ul className="staffpet-autocomplete-list">
+                        {filteredBreedOptions.slice(0, 10).map((opt) => (
+                          <li
+                            key={opt.value}
+                            className="staffpet-autocomplete-item"
+                            onMouseDown={() => {
+                              setAddForm({
+                                ...addForm,
+                                breed: opt.label,
+                              });
+                              setShowBreedList(false);
+                            }}
+                          >
+                            {opt.label}
+                          </li>
+                        ))}
+                      </ul>
+                    )}
                 </div>
               </label>
 

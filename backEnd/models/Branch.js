@@ -26,6 +26,7 @@ const MedicineSchema = new Schema({
   updatedAtMedicine: { type: Date, default: Date.now }
 }, { _id: true });
 
+
 /* ---------- Schedule ---------- */
 const ScheduleSchema = new Schema({
   petId: { type: Schema.Types.ObjectId, ref: 'User' },

@@ -1,4 +1,3 @@
-// backEnd/staff/scheduleManage.js
 const express = require("express");
 const mongoose = require("mongoose");
 const auth = require("../middleware/auth");
