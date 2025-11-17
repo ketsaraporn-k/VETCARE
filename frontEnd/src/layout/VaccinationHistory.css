@@ -1,0 +1,286 @@
+/* ========= Vaccination History Section ========= */
+
+.pet-section {
+  background: #ffffff;
+  padding: 14px 16px 16px;
+  border-radius: 14px;
+  box-shadow: 0 4px 10px rgba(15, 23, 42, 0.04);
+  font-size: 0.88rem;
+}
+
+.section-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.section-title {
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.section-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.petdetail-search {
+  padding: 6px 10px;
+  border-radius: 999px;
+  border: 1px solid #dde7f3;
+  font-size: 0.85rem;
+  background: #f8fbff;
+}
+
+.section-empty {
+  font-size: 0.85rem;
+  color: #7b8794;
+}
+
+.section-more {
+  margin-top: 6px;
+  font-size: 0.8rem;
+  color: #9fb3c8;
+}
+
+/* ตารางวัคซีน */
+.appointments-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 8px;
+  background: white;
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow: 0 4px 9px rgba(0, 0, 0, 0.05);
+}
+
+.appointments-table th,
+.appointments-table td {
+  padding: 10px;
+  font-size: 0.83rem;
+  border-bottom: 1px solid #f3f4f6;
+}
+
+.appointments-table thead {
+  background: #f5f7ff;
+}
+
+.appointments-table tbody tr:nth-child(even) {
+  background: #fafbff;
+}
+
+.appointments-table tbody tr:hover {
+  background: #eef4ff;
+}
+
+/* ปุ่ม delete พิเศษ */
+.staffpet-button-danger {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+.staffpet-button-danger:hover {
+  background: #fecaca;
+}
+
+/* autocomplete รายการวัคซีน */
+.staffpet-vaccine-wrapper {
+  position: relative;
+}
+
+.staffpet-vaccine-list {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  margin-top: 4px;
+  background-color: #ffffff;
+  border-radius: 10px;
+  border: 1px solid #d0d7e2;
+  box-shadow: 0 8px 18px rgba(21, 33, 56, 0.15);
+  max-height: 220px;
+  overflow-y: auto;
+  list-style: none;
+  padding: 4px 0;
+  z-index: 40;
+}
+
+.staffpet-vaccine-item {
+  padding: 6px 12px;
+  font-size: 0.85rem;
+  color: #1b2433;
+  cursor: pointer;
+  line-height: 1.4;
+  transition: background-color 0.12s ease, color 0.12s ease;
+}
+
+.staffpet-vaccine-item:hover {
+  background-color: #f2f5ff;
+}
+
+/* modal สำหรับ Vaccination */
+.petdetail-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 60;
+}
+
+.petdetail-modal {
+  background: #ffffff;
+  border-radius: 16px;
+  padding: 20px 22px 18px;
+  width: 420px;
+  max-width: 95vw;
+  box-shadow: 0 20px 40px rgba(15, 23, 42, 0.25);
+}
+
+.modal-title {
+  margin: 0 0 10px;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.modal-form label {
+  display: block;
+  font-size: 13px;
+  margin-bottom: 10px;
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.btn-primary,
+.btn-secondary {
+  border-radius: 999px;
+  border: none;
+  padding: 6px 16px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.btn-primary {
+  background: #4f46e5;
+  color: #ffffff;
+}
+
+.btn-primary:hover {
+  background: #4338ca;
+}
+
+.btn-secondary {
+  background: #e2e8f0;
+  color: #0f172a;
+}
+
+.btn-secondary:hover {
+  background: #cbd5f5;
+}
+
+/* ====== Treatment medicines combobox ====== */
+
+.treat-medicine-block {
+  margin-top: 12px;
+}
+
+.treat-med-row {
+  display: flex;
+  gap: 8px;
+  align-items: stretch;
+  margin-top: 4px;
+}
+
+.treat-med-combo {
+  position: relative;
+  flex: 1 1 auto;
+}
+
+.treat-med-input {
+  width: 100%;
+  cursor: text;
+}
+
+.treat-med-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  margin-top: 4px;
+  max-height: 220px;
+  overflow-y: auto;
+  background: #ffffff;
+  border-radius: 8px;
+  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.12);
+  padding: 4px 0;
+  z-index: 20;
+}
+
+.treat-med-option {
+  width: 100%;
+  border: none;
+  background: transparent;
+  padding: 8px 12px;
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.treat-med-option:hover {
+  background: #f3f4ff;
+}
+
+.treat-med-option-name {
+  font-weight: 500;
+  color: #111827;
+}
+
+.treat-med-option-meta {
+  font-size: 12px;
+  color: #6b7280;
+}
+
+.treat-med-empty {
+  padding: 8px 12px;
+  font-size: 13px;
+  color: #6b7280;
+}
+
+.treat-med-qty {
+  width: 80px;
+}
+
+.treat-med-add {
+  white-space: nowrap;
+}
+
+/* list ยาที่เลือกแล้ว */
+.treat-med-list {
+  margin-top: 8px;
+  padding: 0;
+  list-style: none;
+}
+
+.treat-med-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #f9fafb;
+  border-radius: 8px;
+  padding: 6px 10px;
+  font-size: 13px;
+  margin-bottom: 4px;
+}

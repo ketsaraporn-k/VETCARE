@@ -22,22 +22,38 @@ const AttachmentSchema = new Schema({
   uploadedBy: { type: Schema.Types.ObjectId, ref: 'User', default: null }
 }, { _id: false });
 
+/** ยาที่ใช้ในหนึ่ง treatment (หลายตัวได้) */
+const MedicineUsageSchema = new Schema({
+  medicineId: { type: Schema.Types.ObjectId, ref: 'Branch.medicines._id', required: true },
+  medicineNameSnapshot: { type: String, required: true },
+  quantityUsed: { type: Number, default: 1 },
+}, { _id: true });
+
 const TreatmentSchema = new Schema({
   symptoms: { type: String, default: null },
   diagnosis: { type: String, default: null },
   notes: { type: String, default: null },
+
   branchId: { type: Schema.Types.ObjectId, ref: 'Branch', required: true },
-  medicineId: { type: Schema.Types.ObjectId, required: true }, // ref to Branch.medicines._id
-  medicineNameSnapshot: { type: String, required: true },
-  quantityUsed: { type: Number, default: 1 },
-  treatmentDate: { type: Date, default: Date.now },
+  branchNameSnapshot: { type: String, default: null },
+
+  // หมอที่รักษา
   staffId: { type: Schema.Types.ObjectId, ref: 'User', default: null },
+  doctorNameSnapshot: { type: String, default: null },
+
+  // หลายยาใน 1 เคส
+  medicines: { type: [MedicineUsageSchema], default: [] },
+  medicineId: { type: Schema.Types.ObjectId, default: null },
+  medicineNameSnapshot: { type: String, default: null },
+  quantityUsed: { type: Number, default: 0 },
+  treatmentDate: { type: Date, default: Date.now },
   attachments: { type: [AttachmentSchema], default: [] }
 }, { _id: true, timestamps: true });
 
+
 const VaccinationSchema = new Schema({
   branchId: { type: Schema.Types.ObjectId, ref: 'Branch', required: true },
-  medicineId: { type: Schema.Types.ObjectId, required: true },
+  medicineId: { type: Schema.Types.ObjectId, default: null },
   medicineNameSnapshot: { type: String, required: true },
   doseQty: { type: Number, default: 1 },
   batch: { type: String, default: null },
@@ -95,11 +111,7 @@ const UserSchema = new Schema({
   pets: { type: [PetSchema], default: [] },
   notifications: { type: [EmbeddedNotificationSchema], default: [] },
   unreadNotifications: { type: Number, default: 0 },
-  profilePicture: { 
-    filename: { type: String, default: null },
-    url: { type: String, default: null }, 
-    uploadedAt: { type: Date, default: null }
-  },
+  profilePicture: { filename: String, url: String, uploadedAt: Date },
   metadata: { type: Schema.Types.Mixed, default: {} },
   isActive: { type: Boolean, default: true },
   createdBy: { type: Schema.Types.ObjectId, ref: 'User', default: null },

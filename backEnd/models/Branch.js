@@ -26,13 +26,21 @@ const MedicineSchema = new Schema({
   updatedAtMedicine: { type: Date, default: Date.now }
 }, { _id: true });
 
+
 /* ---------- Schedule ---------- */
 const ScheduleSchema = new Schema({
   petId: { type: Schema.Types.ObjectId, ref: 'User' },
-  staffId: { type: Schema.Types.ObjectId, ref: 'User' },
+  staffId: { type: Schema.Types.ObjectId, ref: 'User' },        
+  doctorId: { type: Schema.Types.ObjectId, ref: 'User', default: null }, 
   serviceType: { type: String },
-  scheduledAt: { type: Date, index: true },
-  status: { type: String, enum: ['pending','confirmed','done','cancelled'], default: 'pending' },
+  scheduledAt: { type: Date, index: true },                     
+  durationMinutes: { type: Number, default: 30 },               
+  endAt: { type: Date, index: true },                           
+  status: {
+    type: String,
+    enum: ['pending','confirmed','done','cancelled'],
+    default: 'pending'
+  },
   notes: { type: String, default: null },
   createdAt: { type: Date, default: Date.now }
 }, { _id: true });

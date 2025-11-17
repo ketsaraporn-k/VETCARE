@@ -1,42 +1,74 @@
 // backEnd/routes/ownerAppointments.js
 const express = require("express");
 const router = express.Router();
-const mongoose = require("mongoose");
 const auth = require("../middleware/auth");
 const Branch = require("../models/Branch");
 const User = require("../models/User");
 
-// GET all appointments for the owner
+// GET /api/owner/appointments
+// ดึงนัดทั้งหมดของ owner ที่ล็อกอินอยู่
 router.get("/", auth, async (req, res) => {
   try {
-    const ownerId = req.user.id;
+    const ownerId = req.user.id || req.user._id;
 
-    const user = await User.findById(ownerId).lean();
-    if (!user) return res.status(404).json({ error: "Owner not found" });
+    // 1) หา owner + pets
+    const user = await User.findById(ownerId).select("pets").lean();
+    if (!user) {
+      return res.status(404).json({ error: "Owner not found" });
+    }
 
-    const petIds = (user.pets || []).map(p => p._id.toString());
-    if (petIds.length === 0) return res.json([]);
+    const pets = user.pets || [];
+    if (pets.length === 0) {
+      return res.json([]); // ยังไม่มีสัตว์เลี้ยง
+    }
 
-    const branches = await Branch.find({ "schedules.petId": { $in: petIds } })
+    // map petId -> info 
+    const petIds = pets.map((p) => p._id.toString());
+    const petMap = {};
+    pets.forEach((p) => {
+      petMap[p._id.toString()] = {
+        name: p.name,
+        species: p.species,
+      };
+    });
+
+    // 2) หา branch ที่มี schedules ของ pet 
+    const branches = await Branch.find({
+      "schedules.petId": { $in: petIds },
+    })
       .select("branchName schedules")
       .lean();
 
     let result = [];
-    branches.forEach(branch => {
-      (branch.schedules || []).forEach(s => {
-        if (petIds.includes(String(s.petId))) {
+
+    branches.forEach((branch) => {
+      (branch.schedules || []).forEach((s) => {
+        const sPetId = s.petId && s.petId.toString();
+        if (!sPetId) return;
+
+        if (petIds.includes(sPetId)) {
+          const petInfo = petMap[sPetId] || {};
+
           result.push({
-            ...s,
-            branchName: branch.branchName
+            id: s._id.toString(),          // ใช้เป็น key ฝั่ง React
+            petId: sPetId,
+            petName: petInfo.name || null,
+            petSpecies: petInfo.species || null,
+            scheduledAt: s.scheduledAt,
+            status: s.status,
+            serviceType: s.serviceType,
+            branchName: branch.branchName,
           });
         }
       });
     });
 
-    result.sort((a, b) => new Date(a.scheduledAt) - new Date(b.scheduledAt));
+    // 3) เรียงตามเวลา
+    result.sort(
+      (a, b) => new Date(a.scheduledAt) - new Date(b.scheduledAt)
+    );
 
-    res.json(result);
-
+    return res.json(result);
   } catch (err) {
     console.error("owner get appointments error:", err);
     res.status(500).json({ error: "SERVER_ERROR" });

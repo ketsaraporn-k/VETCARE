@@ -1,0 +1,486 @@
+/* ========= Pets list & Pet detail shared styles ========= */
+
+/* layout พื้นฐาน */
+.staffpet-container {
+  padding: 24px 32px;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+    sans-serif;
+  color: #243b53;
+}
+
+.staffpet-title {
+  font-size: 1.4rem;
+  font-weight: 700;
+  margin-bottom: 16px;
+}
+
+.staffpet-loading {
+  padding: 24px 32px;
+  font-size: 0.95rem;
+}
+
+/* search + actions (search, branch filter, add button) */
+.staffpet-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.staffpet-search {
+  min-width: 260px;
+  max-width: 320px;
+  padding: 8px 12px;
+  border-radius: 999px;
+  border: 1px solid #dde7f3;
+  background: #f8fbff;
+  font-size: 0.9rem;
+  outline: none;
+}
+
+.staffpet-search:focus {
+  border-color: #4f9cf9;
+  box-shadow: 0 0 0 2px rgba(79, 156, 249, 0.15);
+}
+
+/* dropdown เลือกสาขา (superAdmin) */
+.staffpet-branch-filter {
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+
+  background: #ffffff;
+  border: 1px solid #dcdcdc;
+  padding: 8px 14px;
+  border-radius: 8px;
+
+  font-size: 14px;
+  font-weight: 500;
+  color: #333;
+
+  cursor: pointer;
+  outline: none;
+
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+  transition: all 0.2s ease;
+  min-width: 160px;
+
+  background-image: url("data:image/svg+xml;utf8,<svg fill='gray' height='20' viewBox='0 0 24 24' width='20' xmlns='http://www.w3.org/2000/svg'><path d='M7 10l5 5 5-5z'/></svg>");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  background-size: 16px;
+  padding-right: 36px;
+}
+
+.staffpet-branch-filter:hover {
+  border-color: #b8b8b8;
+  background: #fafafa;
+}
+
+.staffpet-branch-filter:focus {
+  border-color: #7aa9ff;
+  box-shadow: 0 0 0 3px rgba(120, 166, 255, 0.35);
+}
+
+/* ตาราง Pets list */
+.staffpet-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: #ffffff;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.04);
+  font-size: 0.9rem;
+}
+
+.staffpet-table thead {
+  background: #f3f7ff;
+}
+
+.staffpet-table th,
+.staffpet-table td {
+  padding: 10px 14px;
+  text-align: left;
+}
+
+.staffpet-table th {
+  font-weight: 600;
+  color: #52606d;
+  border-bottom: 1px solid #e1e8f0;
+}
+
+.staffpet-table tbody tr:nth-child(even) {
+  background: #fafbff;
+}
+
+.staffpet-table tbody tr:hover {
+  background: #eef4ff;
+}
+
+/* ปุ่มหลักของ pet pages */
+.staffpet-button {
+  border-radius: 999px;
+  border: none;
+  padding: 6px 12px;
+  font-size: 0.85rem;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  text-decoration: none;
+  transition: background 0.18s ease, transform 0.1s ease, box-shadow 0.18s ease;
+  font-weight: 500;
+}
+
+.staffpet-button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.staffpet-button:hover:not(:disabled) {
+  transform: translateY(-0.5px);
+  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.16);
+}
+
+/* variations */
+.staffpet-button-primary,
+.staffpet-button-view {
+  background: #4f9cf9;
+  color: #ffffff;
+}
+
+.staffpet-button-primary:hover,
+.staffpet-button-view:hover {
+  background: #3b82f6;
+}
+
+.staffpet-button-secondary {
+  background: #ffffff;
+  color: #52606d;
+  border: 1px solid #cbd2e1;
+}
+
+.staffpet-button-secondary:hover {
+  background: #f5f7fb;
+}
+
+.staffpet-button-ghost {
+  background: #f3f4f6;
+  color: #374151;
+}
+
+.staffpet-button-ghost:hover {
+  background: #e5e7eb;
+}
+
+/* pagination */
+.staffpet-pagination {
+  margin-top: 16px;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.staffpet-page-label {
+  font-size: 0.85rem;
+  color: #52606d;
+}
+
+/* ========= Pet detail page ========= */
+
+.staffpet-detail-page {
+  padding: 20px 40px;
+  width: 100%;
+  box-sizing: border-box;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+    sans-serif;
+  color: #243b53;
+}
+
+.staffpet-detail-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 25px;
+}
+
+.staffpet-back {
+  font-size: 14px;
+  color: #3b82f6;
+  text-decoration: none;
+  margin-right: auto;
+}
+
+.staffpet-back:hover {
+  text-decoration: underline;
+}
+
+.staffpet-detail-title {
+  font-size: 26px;
+  font-weight: 700;
+  margin: 0;
+}
+
+.staffpet-detail-subtitle {
+  margin: 0;
+  color: #6b7280;
+  font-size: 14px;
+}
+
+/* info card */
+.staffpet-info-card {
+  background: #ffffff;
+  border-radius: 14px;
+  padding: 25px;
+  margin-bottom: 25px;
+  display: flex;
+  gap: 25px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+
+.staffpet-avatar {
+  background: #f0f7ff;
+  width: 85px;
+  height: 85px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 36px;
+}
+
+.staffpet-info-details {
+  flex: 1;
+}
+
+.staffpet-info-details p {
+  margin: 2px 0;
+  font-size: 14px;
+}
+
+.staffpet-name {
+  font-size: 22px;
+  margin-bottom: 10px;
+}
+
+/* grid ส่วนล่าง (Treatment + Vaccination) */
+.staffpet-detail-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 25px;
+}
+
+@media (max-width: 900px) {
+  .staffpet-detail-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ========= Inputs & autocomplete (ใช้ทั้ง Pet list, Add modal, Pet detail edit) ========= */
+
+.staffpet-input {
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 8px;
+  border: 1px solid #d1d5db;
+  font-size: 14px;
+  margin-top: 6px;
+  box-sizing: border-box;
+}
+
+.staffpet-input:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+}
+
+/* autocomplete generic (owner/species/breed) */
+.staffpet-autocomplete-wrapper {
+  position: relative;
+}
+
+.staffpet-autocomplete-list {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 100%;
+  margin-top: 4px;
+  max-height: 220px;
+  background: #ffffff;
+  border-radius: 10px;
+  box-shadow: 0 12px 40px rgba(15, 23, 42, 0.16);
+  overflow-y: auto;
+  z-index: 60;
+  padding: 4px 0;
+}
+
+.staffpet-autocomplete-item {
+  padding: 6px 10px;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.staffpet-autocomplete-item:hover {
+  background: #eff6ff;
+}
+
+.staffpet-autocomplete-hint {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 11px;
+  color: #94a3b8;
+}
+
+/* owner list */
+.staffpet-owner-list .owner-main {
+  font-weight: 500;
+  color: #0f172a;
+}
+
+.staffpet-owner-list .owner-sub {
+  font-size: 11px;
+  color: #94a3b8;
+}
+
+/* edit form ใน PetDetail */
+.staffpet-edit-form {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  width: 100%;
+}
+
+.staffpet-edit-row {
+  display: flex;
+  flex-direction: column;
+}
+
+.staffpet-edit-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 10px;
+}
+
+/* allergy list (view mode) */
+.staffpet-allergy-list {
+  margin: 6px 0 0;
+  padding-left: 18px;
+  font-size: 13px;
+}
+
+.staffpet-allergy-list .allergy-name {
+  font-weight: 500;
+}
+
+.staffpet-allergy-list .allergy-note {
+  color: #6b7280;
+}
+
+/* allergy edit rows */
+.allergy-edit-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.allergy-edit-row {
+  display: grid;
+  grid-template-columns: 1.5fr 1.5fr auto;
+  gap: 6px;
+}
+
+/* ========= Add New Pet modal ========= */
+
+.staffpet-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 50;
+}
+
+.staffpet-modal {
+  background: #ffffff;
+  border-radius: 16px;
+  padding: 24px 28px;
+  width: 480px;
+  max-width: 90%;
+  box-shadow: 0 18px 60px rgba(15, 23, 42, 0.25);
+  animation: staffpet-modal-in 0.18s ease-out;
+}
+
+@keyframes staffpet-modal-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.staffpet-modal-title {
+  font-size: 20px;
+  font-weight: 600;
+  margin-bottom: 16px;
+  color: #0f172a;
+}
+
+.staffpet-modal-form label {
+  display: block;
+  font-size: 13px;
+  font-weight: 500;
+  color: #475569;
+  margin-bottom: 10px;
+}
+
+.staffpet-modal-form .staffpet-input,
+.staffpet-modal-form select {
+  width: 100%;
+  margin-top: 4px;
+}
+
+/* ปุ่มใน modal add pet */
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 18px;
+}
+
+.btn-primary,
+.btn-secondary {
+  border-radius: 999px;
+  border: none;
+  padding: 6px 16px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.btn-primary {
+  background: #2563eb;
+  color: #ffffff;
+}
+
+.btn-primary:hover {
+  background: #1d4ed8;
+}
+
+.btn-secondary {
+  background: #e2e8f0;
+  color: #0f172a;
+}
+
+.btn-secondary:hover {
+  background: #cbd5f5;
+}

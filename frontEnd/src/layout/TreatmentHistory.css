@@ -1,0 +1,228 @@
+/* ========= Treatment History Section ========= */
+
+.pet-section {
+  background: #ffffff;
+  padding: 14px 16px 16px;
+  border-radius: 14px;
+  box-shadow: 0 4px 10px rgba(15, 23, 42, 0.04);
+  font-size: 0.88rem;
+}
+
+.section-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.section-title {
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.section-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.petdetail-search {
+  padding: 6px 10px;
+  border-radius: 999px;
+  border: 1px solid #dde7f3;
+  font-size: 0.85rem;
+  background: #f8fbff;
+}
+
+.section-empty {
+  font-size: 0.85rem;
+  color: #7b8794;
+}
+
+.section-more {
+  margin-top: 6px;
+  font-size: 0.8rem;
+  color: #9fb3c8;
+}
+
+/* ตารางด้านใน */
+.appointments-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 6px;
+  background: white;
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow: 0 4px 9px rgba(0, 0, 0, 0.05);
+}
+
+.appointments-table th,
+.appointments-table td {
+  padding: 10px;
+  font-size: 0.83rem;
+  border-bottom: 1px solid #f3f4f6;
+}
+
+.appointments-table thead {
+  background: #f5f7ff;
+}
+
+.appointments-table tbody tr:nth-child(even) {
+  background: #fafbff;
+}
+
+.appointments-table tbody tr:hover {
+  background: #f8fafc;
+}
+
+/* modal สำหรับ Treatment */
+.petdetail-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 60;
+}
+
+.petdetail-modal {
+  background: #ffffff;
+  border-radius: 16px;
+  padding: 20px 22px 18px;
+  width: 420px;
+  max-width: 95vw;
+  box-shadow: 0 20px 40px rgba(15, 23, 42, 0.25);
+}
+
+.modal-title {
+  margin: 0 0 10px;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.modal-form label {
+  display: block;
+  font-size: 13px;
+  margin-bottom: 10px;
+}
+
+.modal-form label > span {
+  display: block;
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.btn-primary,
+.btn-secondary {
+  border-radius: 999px;
+  border: none;
+  padding: 6px 16px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.btn-primary {
+  background: #2563eb;
+  color: #ffffff;
+}
+
+.btn-primary:hover {
+  background: #1d4ed8;
+}
+
+.btn-secondary {
+  background: #e2e8f0;
+  color: #0f172a;
+}
+
+.btn-secondary:hover {
+  background: #cbd5f5;
+}
+
+.treat-medicine-block {
+  margin-top: 8px;
+}
+
+.treat-med-row {
+  display: flex;
+  gap: 8px;
+  align-items: stretch;
+}
+
+.treat-med-autocomplete {
+  position: relative; /* parent ของ dropdown */
+  flex: 1;
+}
+
+/* กล่อง dropdown ใต้ input */
+.treat-med-dropdown {
+  position: absolute;
+  top: calc(100% + 4px); /* ชิดใต้ input นิดนึง */
+  left: 0;
+  right: 0;
+  max-height: 220px;
+  overflow-y: auto;
+
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.18);
+  z-index: 9999;
+}
+
+.treat-med-dropdown-item {
+  padding: 8px 12px;
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 0.85rem;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.treat-med-dropdown-item:hover {
+  background-color: #f3f4f6;
+}
+
+.treat-med-name {
+  font-weight: 500;
+  color: #111827;
+}
+
+.treat-med-meta {
+  color: #6b7280;
+  font-size: 0.8rem;
+}
+
+.treat-med-qty {
+  max-width: 80px;
+}
+
+/* list ยาที่ถูก Add แล้ว */
+.treat-med-list {
+  margin-top: 6px;
+  padding: 0;
+  list-style: none;
+}
+
+.treat-med-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 4px 8px;
+  border-radius: 6px;
+  background: #f9fafb;
+  font-size: 0.82rem;
+}
+
+.treat-med-item + .treat-med-item {
+  margin-top: 4px;
+}
