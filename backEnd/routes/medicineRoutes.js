@@ -7,7 +7,7 @@ const role = require('../middleware/role');
 const controller = require('../controllers/medicineController');
 
 // CREATE medicine (สร้าง medicine ใน branch ของผู้ใช้ ถ้า req.user.branchId มี)
-router.post('/', auth, role(['superAdmin', 'branchAdmin', 'staff']), async (req, res) => {
+router.post('/', auth, role(['superAdmin', 'branchAdmin', 'doctor']), async (req, res) => {
   try {
     const data = { ...req.body };
     const branchId = req.user.branchId || data.branchId;
@@ -36,10 +36,10 @@ router.post('/', auth, role(['superAdmin', 'branchAdmin', 'staff']), async (req,
 });
 
 // READ all medicines (optionally filter by branch)
-router.get('/', auth, role(['superAdmin', 'branchAdmin', 'staff']), async (req, res) => {
+// READ all medicines (optionally filter by branch)
+router.get('/', auth, role(['superAdmin', 'branchAdmin', 'staff', 'doctor']), async (req, res) => {
   try {
     if (req.user.role && req.user.role.toLowerCase() === 'superadmin') {
-      // return all branch medicines merged (or return branches with medicines)
       const branches = await Branch.find().select('branchName medicines');
       return res.json(branches);
     }
@@ -53,7 +53,7 @@ router.get('/', auth, role(['superAdmin', 'branchAdmin', 'staff']), async (req, 
 });
 
 // READ one medicine by branchId + medId
-router.get('/:branchId/:medId', auth, role(['superAdmin', 'branchAdmin', 'staff']), async (req, res) => {
+router.get('/:branchId/:medId', auth, role(['superAdmin', 'branchAdmin', 'staff', 'doctor']), async (req, res) => {
   try {
     const { branchId, medId } = req.params;
     // if non-super, ensure branchId matches user's branch
@@ -72,10 +72,10 @@ router.get('/:branchId/:medId', auth, role(['superAdmin', 'branchAdmin', 'staff'
 });
 
 // UPDATE medicine (including updating stock or lowStockAlert)
-router.put('/:branchId/:medId', auth, role(['superAdmin', 'branchAdmin']), controller.updateMedicine)
+router.put('/:branchId/:medId', auth, role(['superAdmin', 'branchAdmin', 'doctor']), controller.updateMedicine)
 
 // DELETE medicine
-router.delete('/:branchId/:medId', auth, role(['superAdmin', 'branchAdmin']), async (req, res) => {
+router.delete('/:branchId/:medId', auth, role(['superAdmin', 'branchAdmin', 'doctor']), async (req, res) => {
   try {
     const { branchId, medId } = req.params;
     if ((req.user.role || '').toLowerCase() !== 'superadmin' && String(req.user.branchId) !== String(branchId)) {

@@ -1,9 +1,10 @@
+// src/components/InventoryUpdate.jsx
 import React, { useEffect, useState } from "react";
 import api from "../../api/axiosConfig";
 import "./InventoryUpdate.css";
 
 const PAGE_SIZE = 15;
-const DEFAULT_REORDER_QTY = 10; // fixed as requested
+const DEFAULT_REORDER_QTY = 10;
 
 export default function AdminInventoryUpdate() {
   const [branches, setBranches] = useState([]);
@@ -22,6 +23,7 @@ export default function AdminInventoryUpdate() {
   const [historyItem, setHistoryItem] = useState(null);
 
   const [showCreate, setShowCreate] = useState(false);
+  const [creating, setCreating] = useState(false);
   const [newMed, setNewMed] = useState({
     medicineName: "",
     sku: "",
@@ -31,30 +33,36 @@ export default function AdminInventoryUpdate() {
     category: ""
   });
 
-  // detect current user from localStorage (used for branch restrictions)
   const stored = typeof window !== "undefined" ? localStorage.getItem("user") : null;
   const currentUser = stored ? JSON.parse(stored) : null;
-  const isSuper = (currentUser?.role || "").toString().toLowerCase() === "superadmin";
+  const role = (currentUser?.role || "").toString().toLowerCase();
+  const isSuper = role === "superadmin";
+
+  // Allow doctor to create
+  const canCreate = isSuper || role === "doctor";
 
   useEffect(() => {
-    // load branches if super, and load medicines
+    if (!isSuper && currentUser?.branchId) {
+      setSelectedBranchId(String(currentUser.branchId));
+    } else if (!isSuper && currentUser?.branch) {
+      setSelectedBranchId(String(currentUser.branch));
+    }
+  }, [currentUser, isSuper]);
+
+  useEffect(() => {
     (async () => {
-      if (isSuper) {
-        await loadBranches();
-      }
+      await loadBranches();
       await loadPage(1);
     })();
     // eslint-disable-next-line
   }, [selectedBranchId]);
 
   useEffect(() => {
-    // when filters change, reload page 1
     const t = setTimeout(() => loadPage(1), 250);
     return () => clearTimeout(t);
     // eslint-disable-next-line
   }, [q, sortBy, sortDir, filterLow]);
 
-  // load branches (for super admin branch selector)
   const loadBranches = async () => {
     try {
       const tryUrls = ["/api/branches", "/branches", "/api/branches/all"];
@@ -64,20 +72,20 @@ export default function AdminInventoryUpdate() {
       }
       const list = res?.data && Array.isArray(res.data) ? res.data : (Array.isArray(res?.data?.data) ? res.data.data : []);
       setBranches(list || []);
-      if (!selectedBranchId && (list || []).length) {
-        setSelectedBranchId(String(list[0]._id || list[0].id));
+      if (!isSuper && currentUser?.branchId) {
+        const found = (list || []).find(b => String(b._id || b.id) === String(currentUser.branchId));
+        if (found) setSelectedBranchId(String(found._id || found.id));
       }
+      if (!selectedBranchId && (list || []).length) setSelectedBranchId(String(list[0]._id || list[0].id));
     } catch (err) {
       console.warn("loadBranches err", err);
       setBranches([]);
     }
   };
 
-  // load medicines: backend returns branches with medicines; adaptively pick branch
   const loadPage = async (p = 1) => {
     setLoading(true);
     try {
-      // GET /api/medicines (backend returns branch array)
       const tryUrls = ["/api/medicines", "/medicines"];
       let res = null;
       for (const u of tryUrls) {
@@ -86,26 +94,22 @@ export default function AdminInventoryUpdate() {
       if (!res) throw new Error("No medicines endpoint");
 
       const payload = res.data;
-
-      // payload is either: array of branches (super) or [branch] for non-super
       let branchList = Array.isArray(payload) ? payload : (payload && payload.branches ? payload.branches : []);
-
       if (!Array.isArray(branchList) || branchList.length === 0) {
-        // maybe payload is an object for single branch
-        if (payload && payload.medicines && payload.branchName) {
-          branchList = [payload];
-        } else {
-          branchList = [];
-        }
+        if (payload && payload.medicines && payload.branchName) branchList = [payload];
+        else branchList = [];
       }
 
-      // determine branch to show:
       let branchToShow = null;
       if (isSuper) {
         branchToShow = branchList.find(b => String(b._id || b.id) === String(selectedBranchId)) || branchList[0] || null;
       } else {
-        // non-super should get only user's branch (server usually returns that)
-        branchToShow = branchList[0] || null;
+        branchToShow =
+          branchList.find(b => String(b._id || b.id) === String(currentUser?.branchId)) ||
+          branchList.find(b => String(b._id || b.id) === String(currentUser?.branch)) ||
+          branchList.find(b => String(b._id || b.id) === String(selectedBranchId)) ||
+          branchList[0] ||
+          null;
       }
 
       const meds = (branchToShow && Array.isArray(branchToShow.medicines)) ? branchToShow.medicines.map(m => ({
@@ -114,7 +118,6 @@ export default function AdminInventoryUpdate() {
         branchName: branchToShow.branchName || branchToShow.name || ""
       })) : [];
 
-      // apply client-side search / filter / sort / pagination
       let filtered = meds;
       if (q && q.trim()) {
         const qq = q.trim().toLowerCase();
@@ -128,12 +131,16 @@ export default function AdminInventoryUpdate() {
         filtered = filtered.filter(m => Number(m.stock || m.quantity || 0) <= (m.lowStockThreshold ?? DEFAULT_REORDER_QTY));
       }
 
-      // sort
       filtered.sort((a,b) => {
-        const keyA = (sortBy === "name" ? (a.medicineName || a.name || "") : (sortBy === "quantity" ? Number(a.stock ?? a.quantity ?? 0) : new Date(a.updatedAt || a.createdAt || 0))).toString();
-        const keyB = (sortBy === "name" ? (b.medicineName || b.name || "") : (sortBy === "quantity" ? Number(b.stock ?? b.quantity ?? 0) : new Date(b.updatedAt || b.createdAt || 0))).toString();
-        if (sortDir === "asc") return (keyA > keyB) ? 1 : (keyA < keyB) ? -1 : 0;
-        return (keyA < keyB) ? 1 : (keyA > keyB) ? -1 : 0;
+        const getKey = (x) => {
+          if (sortBy === "name") return (x.medicineName || x.name || "").toString().toLowerCase();
+          if (sortBy === "quantity") return Number(x.stock ?? x.quantity ?? 0);
+          return new Date(x.updatedAt || x.createdAt || 0).getTime();
+        };
+        const keyA = getKey(a);
+        const keyB = getKey(b);
+        if (sortDir === "asc") return keyA > keyB ? 1 : (keyA < keyB ? -1 : 0);
+        return keyA < keyB ? 1 : (keyA > keyB ? -1 : 0);
       });
 
       const totalCount = filtered.length;
@@ -153,7 +160,6 @@ export default function AdminInventoryUpdate() {
     }
   };
 
-  // selection helpers
   const toggleSelect = (id) => {
     setSelected(prev => {
       const s = new Set(prev);
@@ -164,11 +170,9 @@ export default function AdminInventoryUpdate() {
   const selectAllOnPage = () => setSelected(new Set(items.map(it => it._id || it.id)));
   const clearSelection = () => setSelected(new Set());
 
-  // inline update stock
   const inlineUpdate = async (id, payload) => {
     if (!window.confirm("ยืนยันการบันทึกการเปลี่ยนแปลง?")) return;
     try {
-      // need branchId + medId per backend route
       const med = items.find(it => (it._id || it.id) === id);
       if (!med) throw new Error("Medicine not found on page");
       const branchId = med._branchId;
@@ -185,12 +189,10 @@ export default function AdminInventoryUpdate() {
     }
   };
 
-  // bulk apply
   const applyBulk = async () => {
     if (selected.size === 0) return alert("เลือกรายการก่อน");
     if (!window.confirm(`Apply change ${bulkValue} to ${selected.size} items?`)) return;
     try {
-      // we must call per-med endpoint because backend stores meds inside branches
       const ids = Array.from(selected);
       for (const id of ids) {
         const med = items.concat([]).find(it => (it._id || it.id) === id);
@@ -206,7 +208,6 @@ export default function AdminInventoryUpdate() {
     }
   };
 
-  // delete selected
   const deleteSelected = async () => {
     if (selected.size === 0) return alert("เลือกรายการก่อน");
     if (!window.confirm(`ลบ ${selected.size} รายการ?`)) return;
@@ -226,7 +227,6 @@ export default function AdminInventoryUpdate() {
     }
   };
 
-  // open history
   const openHistory = async (id) => {
     try {
       const med = items.concat([]).find(it => (it._id || it.id) === id);
@@ -240,49 +240,79 @@ export default function AdminInventoryUpdate() {
     }
   };
 
-  // create medicine (Thai labels in modal)
+  // CREATE medicine (supports doctor)
   const doCreateMedicine = async (e) => {
     e && e.preventDefault();
+    if (!canCreate) return alert("คุณไม่มีสิทธิ์สร้างยา");
+
+    // client-side validation
+    const name = (newMed.medicineName || "").toString().trim();
+    if (!name || name.length < 2) return alert("กรุณากรอกชื่อยาที่ถูกต้อง");
+    const stockNum = Number(newMed.stock || 0);
+    if (Number.isNaN(stockNum) || stockNum < 0) return alert("จำนวนเริ่มต้นต้องเป็นตัวเลข >= 0");
+    const branchId = isSuper ? selectedBranchId : (currentUser?.branchId || currentUser?.branch || selectedBranchId);
+    if (!branchId) return alert("ไม่พบสาขาที่จะเพิ่ม กรุณาเลือกสาขาหรือเช็คข้อมูลผู้ใช้");
+
+    const payload = {
+      medicineName: name,
+      sku: newMed.sku ? String(newMed.sku).trim() : undefined,
+      stock: stockNum,
+      unit: newMed.unit || "pcs",
+      lowStockThreshold: DEFAULT_REORDER_QTY,
+      manufacturer: newMed.manufacturer ? String(newMed.manufacturer).trim() : undefined,
+      category: newMed.category || undefined,
+      branchId,
+    };
+
+    setCreating(true);
+    setToast({ type: "info", text: "กำลังสร้าง..." });
+
     try {
-      // branchId: for super, use selectedBranchId, for others use user's branch
-      const branchId = isSuper ? selectedBranchId : (currentUser?.branchId || currentUser?.branch);
-      if (!branchId) {
-        return alert("ไม่พบสาขาที่จะเพิ่ม กรุณาเลือกสาขาหรือเช็คข้อมูลผู้ใช้");
-      }
-      const payload = {
-        medicineName: newMed.medicineName,
-        sku: newMed.sku,
-        stock: Number(newMed.stock || 0),
-        unit: newMed.unit || "pcs",
-        lowStockThreshold: DEFAULT_REORDER_QTY, // fixed
-        manufacturer: newMed.manufacturer || null,
-        category: newMed.category || null,
-        branchId // include for backend when user is super
-      };
-      const tryUrls = [`/api/medicines`, `/medicines`];
+      const candidateUrls = ["/api/medicines", "/medicines"];
       let res = null;
-      for (const u of tryUrls) {
-        try { res = await api.post(u, payload); break; } catch (err) {}
+      for (const url of candidateUrls) {
+        try {
+          res = await api.post(url, payload);
+          if (res && res.status >= 200 && res.status < 300) break;
+        } catch (err) {
+          const status = err?.response?.status;
+          if (status === 401) {
+            setToast({ type: "error", text: "Unauthenticated — กรุณา login ใหม่" });
+            throw err;
+          }
+          // continue trying fallback endpoints
+        }
       }
-      if (!res) throw new Error("Create medicine failed");
+
+      if (!res || !(res.status >= 200 && res.status < 300)) {
+        throw new Error("Create failed (no endpoint responded)");
+      }
+
       setToast({ type: "success", text: "สร้างยาเรียบร้อย" });
       setShowCreate(false);
       setNewMed({ medicineName: "", sku: "", stock: 0, unit: "pcs", manufacturer: "", category: "" });
       await loadPage(1);
     } catch (err) {
       console.error("create medicine err", err);
-      setToast({ type: "error", text: "Create failed" });
+      const msg = err?.response?.data?.message || err.message || "Create failed";
+      setToast({ type: "error", text: msg });
+    } finally {
+      setCreating(false);
     }
   };
 
-  // small helpers
   useEffect(() => {
     if (!toast) return;
-    const t = setTimeout(() => setToast(null), 2500);
+    const t = setTimeout(() => setToast(null), 2800);
     return () => clearTimeout(t);
   }, [toast]);
 
   const totalPages = Math.max(1, Math.ceil((total || items.length || 0) / PAGE_SIZE));
+  const displayBranchName = currentUser?.branchName
+    || (branches.find(b => String(b._id || b.id) === String(selectedBranchId))?.branchName)
+    || (branches.find(b => String(b._id || b.id) === String(currentUser?.branchId))?.branchName)
+    || currentUser?.branch
+    || "-";
 
   return (
     <div className="aiu-page">
@@ -300,7 +330,7 @@ export default function AdminInventoryUpdate() {
                 </select>
               </>
             ) : (
-              <div className="aiu-branch-fixed">สาขา: {currentUser?.branchName || currentUser?.branch || "-"}</div>
+              <div className="aiu-branch-fixed">สาขา: {displayBranchName}</div>
             )}
           </div>
 
@@ -342,7 +372,12 @@ export default function AdminInventoryUpdate() {
               <input type="number" value={bulkValue} onChange={e => setBulkValue(e.target.value)} />
               <button onClick={applyBulk}>Apply</button>
               <button onClick={deleteSelected} className="aiu-delete">Delete selected</button>
-              <button className="btn-add" onClick={() => setShowCreate(true)}>+ เพิ่มยา</button>
+
+              {canCreate ? (
+                <button className="btn-add" onClick={() => setShowCreate(true)}>+ เพิ่มยา</button>
+              ) : (
+                <button className="btn-add" disabled title="เฉพาะผู้มีสิทธิ์เท่านั้น">+ เพิ่มยา</button>
+              )}
             </div>
           </div>
         </div>
@@ -460,11 +495,22 @@ export default function AdminInventoryUpdate() {
         </div>
       )}
 
-      {/* Create modal (thai labels) */}
       {showCreate && (
         <div className="aiu-modal-backdrop" onClick={() => setShowCreate(false)}>
           <form className="aiu-modal" onClick={(e) => e.stopPropagation()} onSubmit={doCreateMedicine}>
             <h3>เพิ่มยาใหม่</h3>
+
+            {isSuper ? (
+              <>
+                <label>สาขา (สำหรับการสร้าง)</label>
+                <select value={selectedBranchId} onChange={e => setSelectedBranchId(e.target.value)} required>
+                  <option value="">— เลือกสาขา —</option>
+                  {branches.map(b => <option key={b._id || b.id} value={b._id || b.id}>{b.branchName || b.name}</option>)}
+                </select>
+              </>
+            ) : (
+              <div style={{ marginBottom: 8 }}>สาขา: {displayBranchName}</div>
+            )}
 
             <label>ชื่อยา</label>
             <input value={newMed.medicineName} required onChange={e => setNewMed(prev => ({ ...prev, medicineName: e.target.value }))} />
@@ -497,7 +543,7 @@ export default function AdminInventoryUpdate() {
 
             <div style={{ marginTop: 12, display: "flex", gap: 8 }}>
               <button type="button" onClick={() => setShowCreate(false)} className="btn ghost">ปิด</button>
-              <button type="submit" className="btn">สร้าง</button>
+              <button type="submit" className="btn" disabled={creating}>{creating ? "กำลังสร้าง..." : "สร้าง"}</button>
             </div>
           </form>
         </div>

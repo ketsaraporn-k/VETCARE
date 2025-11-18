@@ -74,8 +74,7 @@ const Sidebar = ({ user, onLogout }) => {
     { name: "Patients (Pets)", icon: "fa-solid fa-dog", path: "/pets" },
     { name: "Consolidated View", icon: "fa-solid fa-chart-pie", path: "/consolidated" },
     { name: "Update Inventory", icon: "fa-solid fa-boxes-packing", path: "/admin/inventory/update" },
-    { name: "Appointments", icon: "fa-regular fa-calendar", path: "/appointments" },
-    { name: "Inventory", icon: "fa-solid fa-box", path: "/inventory" }
+    { name: "Appointments", icon: "fa-regular fa-calendar", path: "/appointments" }
   ];
 
   const branchAdminMenu = [
