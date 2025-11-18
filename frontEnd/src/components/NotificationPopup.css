@@ -1,25 +1,93 @@
-.medical-record-panel {
-  margin-top: 20px;
+/* Replace your existing .np-* CSS with this safer version */
+
+/* container (fixed on top-right, but doesn't cover whole viewport) */
+.np-root {
+  position: fixed;
+  top: 18px;
+  right: 20px;
+  z-index: 4000;
+  font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+  /* ensure children positioned relative to this */
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+  pointer-events: none; /* default: don't capture clicks except explicit interactive children */
 }
 
-.records-table {
-  width: 100%;
-  border-collapse: collapse;
-  margin-bottom: 20px;
+/* bell button must be interactive even when root has pointer-events:none */
+.np-bell {
+  pointer-events: auto; /* allow clicks */
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
+  background: #ffffff;
+  border: 1px solid rgba(2,6,23,0.05);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  padding: 6px;
+  position: relative;
+  transition: transform .12s ease, box-shadow .12s ease, background .12s;
+  box-shadow: 0 6px 18px rgba(2,6,23,0.06);
+  z-index: 4010; /* above panel if needed */
+}
+.np-bell:hover { transform: translateY(-2px); box-shadow: 0 10px 30px rgba(2,6,23,0.08); }
+.np-bell.open { background: #f8fafc; }
+
+/* dot also interactive */
+.np-dot { pointer-events: none; /* decorative only */ }
+
+/* panel positioned absolute relative to root so it won't cover whole page */
+.np-panel {
+  position: absolute;
+  top: calc(100% + 8px); /* below the bell */
+  right: 0;
+  width: 360px;
+  max-height: calc(100vh - 120px);
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 18px 60px rgba(2,6,23,0.18);
+  transform-origin: top right;
+  transform: translateY(-6px) scale(.98);
+  opacity: 0;
+  pointer-events: none; /* disabled when hidden */
+  transition: transform .14s ease, opacity .14s ease;
+  overflow: hidden;
+  display: none; /* hidden by default */
+  flex-direction: column;
+  z-index: 4005;
 }
 
-.records-table th,
-.records-table td {
-  border: 1px solid #ccc;
-  padding: 8px;
-  text-align: left;
+/* visible state */
+.np-panel.show {
+  display: flex;
+  transform: translateY(6px) scale(1);
+  opacity: 1;
+  pointer-events: auto; /* accept clicks when visible */
 }
 
-.records-table th {
-  background-color: #f2f2f2;
-}
+/* header */
+.np-header { display:flex; align-items:center; justify-content:space-between; padding: 12px 14px; border-bottom: 1px solid #f3f4f6; }
+.np-title { font-weight:700; color:#0f172a; font-size:15px; }
+.np-sub { color:#6b7280; margin-left:8px; font-size:12px; font-weight:600; }
+.np-actions { display:flex; gap:8px; align-items:center; }
+.np-small { padding:6px 8px; border-radius:8px; border:1px solid #e6e8eb; background:#fff; cursor:pointer; font-size:13px; pointer-events: auto; }
+.np-close { border:none; background:transparent; font-size:15px; color:#374151; cursor:pointer; pointer-events: auto; }
 
-h3, h4 {
-  margin-bottom: 10px;
-  color: #333;
-}
+/* list */
+.np-list { overflow-y:auto; padding:8px; display:flex; flex-direction:column; gap:8px; }
+.np-empty { padding:18px; text-align:center; color:#6b7280; }
+
+.np-item { display:flex; gap:10px; padding:10px; border-radius:10px; cursor:pointer; align-items:flex-start; transition: background .08s ease; pointer-events: auto; }
+.np-item:hover { background:#fbfdff; }
+.np-item.unread { background:#fff7f0; border-left:3px solid #fb923c; }
+
+.np-item-ico { width:36px; height:36px; border-radius:8px; display:flex; align-items:center; justify-content:center; background:#f3f4f6; color:#374151; font-weight:700; font-size:14px; }
+.np-item-body { flex:1; min-width:0; }
+.np-msg { font-size:14px; font-weight:600; color:#0f172a; overflow-wrap:anywhere; }
+.np-meta { font-size:12px; color:#6b7280; margin-top:6px; }
+
+.np-footer { padding:8px 12px; border-top:1px solid #f3f4f6; text-align:center; }
+.np-note { color:#6b7280; font-size:12px; }

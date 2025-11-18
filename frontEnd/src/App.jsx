@@ -13,7 +13,6 @@ import Appointments from "./pages/OwnerAppointments.jsx";
 
 import Auth from "./components/Auth";
 //Staff/Admin/SuperAdmin 
-// import StaffDashboard from "./pages/StaffDashboard";
 import StaffPets from "./pages/Pets.jsx";
 import StaffPetDetail from "./pages/PetDetail.jsx";
 import StaffAppointments from "./pages/StaffAppointments.jsx"; 
@@ -28,7 +27,6 @@ import AdminAlerts from "./pages/admin/Alerts";
 import AdminInventoryUpdate from "./pages/admin/InventoryUpdate";
 import MoveRequest from "./pages/admin/MoveRequest";
 import MoveRequestsList from "./pages/admin/MoveRequestsList";
-import MoveRequestHistory from "./pages/admin/MoveRequestHistory";
 import BranchSummary from "./pages/BranchSummary";
 
 // superAdmin pages
@@ -137,7 +135,6 @@ function App() {
               <Route path="admin/dashboard" element={<AdminDashboard user={user} />} />
               <Route path="admin/alerts" element={<AdminAlerts user={user} />} />
               <Route path="admin/inventory/update" element={<AdminInventoryUpdate user={user} />} />
-              <Route path="branches/history" element={<MoveRequestHistory user={user} />} />
               <Route path="/branch-summary" element={<BranchSummary />} />
 
               {/* superadmin area */}

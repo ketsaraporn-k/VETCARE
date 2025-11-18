@@ -1,16 +1,32 @@
 // src/pages/MoveRequestsList.jsx
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import api from "../../api/axiosConfig";
+import "./MoveRequestsList.css"; // make sure this imports your .mr-* CSS
 
-/*
-  MoveRequestsList (updated)
-  - GET /branchAdmin/moveRequests
-  - Approve: PUT /branchAdmin/moveRequest/approve/:id (superAdmin)
-  - Reject:  PUT /branchAdmin/moveRequest/reject/:id  (superAdmin)
-  - Cancel:  PUT /branchAdmin/moveRequest/cancel/:id  (requester OR superAdmin)  <-- changed
-*/
+const CANDIDATE_GET_ENDPOINTS = [
+  "/api/branchAdmin/moveRequests",
+  "/branchAdmin/moveRequests",
+  "/api/branchAdmin/move-requests",
+  "/api/branchAdmin/move_requests",
+  "/api/move-requests",
+  "/api/move_requests",
+  "/api/moveRequests",
+  "/branchAdmin/move-requests",
+  "/moveRequests",
+  "/move-requests"
+];
 
-const MoveRequestsList = ({ user: propUser }) => {
+function tryParseMoveRequests(payload) {
+  if (!payload) return [];
+  if (Array.isArray(payload)) return payload;
+  if (Array.isArray(payload.moveRequests)) return payload.moveRequests;
+  if (Array.isArray(payload.data)) return payload.data;
+  if (Array.isArray(payload.items)) return payload.items;
+  if (payload.moveRequests && Array.isArray(payload.moveRequests.data)) return payload.moveRequests.data;
+  return [];
+}
+
+export default function MoveRequestsList({ user: propUser }) {
   const stored = typeof window !== "undefined" ? localStorage.getItem("user") : null;
   const parsed = stored ? JSON.parse(stored) : null;
   const currentUser = propUser || parsed || {};
@@ -19,181 +35,232 @@ const MoveRequestsList = ({ user: propUser }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [processingId, setProcessingId] = useState(null);
+  const [detectedGetEndpoint, setDetectedGetEndpoint] = useState(null);
+
+  const [showRejectModal, setShowRejectModal] = useState(false);
+  const [rejectPayload, setRejectPayload] = useState({ id: null, reason: "" });
+
+  const mountedRef = useRef(true);
+  useEffect(() => { mountedRef.current = true; return () => { mountedRef.current = false; }; }, []);
 
   const isSuper = (currentUser.role || "").toString().toLowerCase() === "superadmin";
-  const isBranchAdmin = (currentUser.role || "").toString().toLowerCase() === "branchadmin";
+
+  const detectGetEndpoint = async () => {
+    for (const ep of CANDIDATE_GET_ENDPOINTS) {
+      try {
+        const res = await api.get(ep);
+        if (res && res.status >= 200 && res.status < 300) return ep;
+      } catch (err) { /* try next */ }
+    }
+    return null;
+  };
 
   const fetchRequests = async () => {
     setLoading(true);
     setError(null);
     try {
-      const res = await api.get("/branchAdmin/moveRequests");
-      const data = res.data?.moveRequests || res.data || [];
-      setRequests(data);
+      let ep = detectedGetEndpoint;
+      if (!ep) {
+        ep = await detectGetEndpoint();
+        setDetectedGetEndpoint(ep);
+      }
+      if (!ep) throw new Error("No moveRequests endpoint detected. Check backend routes.");
+      const res = await api.get(ep);
+      const parsedList = tryParseMoveRequests(res.data);
+      if (mountedRef.current) setRequests(parsedList);
     } catch (err) {
       console.error("fetchRequests err:", err);
-      setError(err.response?.data?.error || err.message || "Failed to load move requests");
-      setRequests([]);
+      const serverMsg = err?.response?.data?.error || err?.response?.data?.message;
+      setError(serverMsg || err.message || "Failed to load move requests");
+      if (mountedRef.current) setRequests([]);
     } finally {
-      setLoading(false);
+      if (mountedRef.current) setLoading(false);
     }
   };
 
   useEffect(() => {
     fetchRequests();
-  }, []);
+    // eslint-disable-next-line
+  }, [detectedGetEndpoint]);
+
+  const tryActionOnVariants = async (actionName, id, body = {}) => {
+    const candidates = [
+      `/api/branchAdmin/moveRequest/${actionName}/${id}`,
+      `/api/branchAdmin/move-requests/${actionName}/${id}`,
+      `/api/branchAdmin/move_requests/${actionName}/${id}`,
+      `/branchAdmin/moveRequest/${actionName}/${id}`,
+      `/branchAdmin/move-requests/${actionName}/${id}`,
+      `/moveRequest/${actionName}/${id}`,
+      `/move-requests/${actionName}/${id}`,
+      `/api/move-requests/${actionName}/${id}`,
+      `/api/move_requests/${actionName}/${id}`,
+      // alternate: PUT /api/branchAdmin/moveRequest/cancel/:id etc
+      `/api/branchAdmin/moveRequest/${actionName}/${id}`,
+      `/api/branchAdmin/moveRequest/${id}`, // some APIs expect body { action: 'cancel' } but we try simple PUT first
+      `/api/branchAdmin/move-requests/${id}`
+    ];
+
+    let lastErr = null;
+    for (const url of candidates) {
+      try {
+        // prefer PUT for actions
+        const res = await api.put(url, body);
+        if (res && res.status >= 200 && res.status < 300) return res;
+      } catch (err) {
+        lastErr = err;
+      }
+    }
+    throw lastErr || new Error("No action endpoint succeeded");
+  };
 
   const handleApprove = async (id) => {
     if (!confirm("Approve this move request?")) return;
     try {
       setProcessingId(id);
-      await api.put(`/branchAdmin/moveRequest/approve/${id}`);
+      await tryActionOnVariants("approve", id);
       await fetchRequests();
       alert("Approved.");
     } catch (err) {
       console.error("approve err:", err);
-      alert(err.response?.data?.error || "Approve failed");
+      alert(err?.response?.data?.error || err?.message || "Approve failed");
     } finally {
       setProcessingId(null);
     }
   };
 
-  const handleReject = async (id) => {
-    const reason = prompt("Rejection reason (optional):", "");
-    if (reason === null) return; // cancelled
+  const openRejectModal = (id) => {
+    setRejectPayload({ id, reason: "" });
+    setShowRejectModal(true);
+  };
+
+  const submitReject = async () => {
+    const { id, reason } = rejectPayload;
+    if (!id) return;
     try {
       setProcessingId(id);
-      await api.put(`/branchAdmin/moveRequest/reject/${id}`, { reason });
+      setShowRejectModal(false);
+      await tryActionOnVariants("reject", id, { reason });
       await fetchRequests();
       alert("Rejected.");
     } catch (err) {
       console.error("reject err:", err);
-      alert(err.response?.data?.error || "Reject failed");
+      alert(err?.response?.data?.error || err?.message || "Reject failed");
     } finally {
       setProcessingId(null);
+      setRejectPayload({ id: null, reason: "" });
     }
   };
 
-  // UPDATED: call PUT /moveRequest/cancel/:id with optional reason
-  const handleCancel = async (id) => {
+  const openCancelConfirm = async (id) => {
     const reason = prompt("Cancellation reason (optional):", "");
-    if (reason === null) return; // user cancelled prompt
+    if (reason === null) return;
     if (!confirm("Cancel (mark as cancelled) this move request?")) return;
-
     try {
       setProcessingId(id);
-      await api.put(`/branchAdmin/moveRequest/cancel/${id}`, { reason });
+      await tryActionOnVariants("cancel", id, { reason });
       await fetchRequests();
       alert("Cancelled.");
     } catch (err) {
       console.error("cancel err:", err);
-      alert(err.response?.data?.error || "Cancel failed");
+      alert(err?.response?.data?.error || err?.message || "Cancel failed");
     } finally {
       setProcessingId(null);
     }
   };
 
-  if (loading) {
-    return <div style={{ padding: 16 }}><p>Loading move requests...</p></div>;
-  }
-
   return (
-    <div style={{ padding: 16 }}>
-      <h2>Move Requests</h2>
+    <div className="mr-page">
+      <h2 className="mr-title">Move Requests</h2>
 
-      {error && (
-        <div style={{ background: "#ffe6e6", color: "#900", padding: 12, borderRadius: 8, marginBottom: 12 }}>
-          <strong>Error:</strong> {error}
-        </div>
-      )}
+      {loading && <div className="mr-loading">Loading move requests...</div>}
 
-      {requests.length === 0 ? (
-        <p>No move requests found.</p>
-      ) : (
-        <div style={{ overflowX: "auto" }}>
-          <table style={{ width: "100%", borderCollapse: "collapse" }}>
-            <thead>
-              <tr>
-                <th style={thStyle}>Requester</th>
-                <th style={thStyle}>Subject</th>
-                <th style={thStyle}>From Branch</th>
-                <th style={thStyle}>To Branch</th>
-                <th style={thStyle}>Reason</th>
-                <th style={thStyle}>Status</th>
-                <th style={thStyle}>Created At</th>
-                <th style={thStyle}>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {requests.map((r) => {
-                const id = r._id || r.id;
-                const isPending = r.status === "pending";
-                const isRequester = (r.requesterId && (r.requesterId._id || r.requesterId) && String((r.requesterId._id || r.requesterId)) === String(currentUser._id || currentUser.id));
+      {error && <div className="mr-error"><strong>Error:</strong> {error}</div>}
 
-                return (
-                  <tr key={id} style={{ borderBottom: "1px solid #eee" }}>
-                    <td style={tdStyle}>
-                      {r.requesterId?.username || r.requesterId?.name || (r.requesterId?._id ? `id:${r.requesterId._id}` : "-")}
-                    </td>
-                    <td style={tdStyle}>
-                      {r.subjectUserId?.username || r.subjectUserId?.name || (r.subjectUserId?._id ? `id:${r.subjectUserId._id}` : "-")}
-                    </td>
-                    <td style={tdStyle}>{r.fromBranch?.branchName || r.fromBranch || "-"}</td>
-                    <td style={tdStyle}>{r.toBranch?.branchName || r.toBranch || "-"}</td>
-                    <td style={tdStyle}>{r.reason || "-"}</td>
-                    <td style={tdStyle}>{r.status}</td>
-                    <td style={tdStyle}>{r.createdAt ? new Date(r.createdAt).toLocaleString() : "-"}</td>
-                    <td style={tdStyle}>
+      <div className="mr-table-wrap">
+        <table className="mr-table">
+          <thead>
+            <tr>
+              <th>Requester</th>
+              <th>Subject</th>
+              <th>From Branch</th>
+              <th>To Branch</th>
+              <th>Reason</th>
+              <th>Status</th>
+              <th>Created At</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+
+          <tbody>
+            {(!requests || requests.length === 0) ? (
+              <tr><td colSpan={8} style={{ padding: 16, textAlign: "center" }}>No move requests found.</td></tr>
+            ) : requests.map((r) => {
+              const id = r._id || r.id;
+              const isPending = (r.status || "").toString().toLowerCase() === "pending";
+              const isRequester = (r.requesterId && (r.requesterId._id || r.requesterId) && String((r.requesterId._id || r.requesterId)) === String(currentUser._id || currentUser.id));
+
+              return (
+                <tr key={id}>
+                  <td>{r.requesterId?.username || r.requesterId?.name || (r.requesterId?._id ? `id:${r.requesterId._id}` : "-")}</td>
+                  <td>{r.subjectUserId?.username || r.subjectUserId?.name || (r.subjectUserId?._id ? `id:${r.subjectUserId._id}` : "-")}</td>
+                  <td>{(r.fromBranch && (r.fromBranch.branchName || r.fromBranch)) || "-"}</td>
+                  <td>{(r.toBranch && (r.toBranch.branchName || r.toBranch)) || "-"}</td>
+                  <td className="mr-reason" title={r.reason || ""}>{r.reason || "-"}</td>
+                  <td>{r.status || "-"}</td>
+                  <td>{r.createdAt ? new Date(r.createdAt).toLocaleString() : (r.requestDate ? new Date(r.requestDate).toLocaleString() : "-")}</td>
+                  <td>
+                    <div className="mr-actions">
                       {isPending ? (
                         isSuper ? (
                           <>
-                            <button
-                              onClick={() => handleApprove(id)}
-                              disabled={processingId === id}
-                              style={{ marginRight: 8, background: "#10b981", color: "#fff", border: "none", padding: "8px 12px", borderRadius: 8 }}
-                            >
-                              {processingId === id ? "Processing..." : "Approve"}
+                            <button className="mr-btn mr-btn-approve" onClick={() => handleApprove(id)} disabled={processingId === id}>
+                              {processingId === id ? "..." : "Approve"}
                             </button>
-
-                            <button
-                              onClick={() => handleReject(id)}
-                              disabled={processingId === id}
-                              style={{ background: "#ef4444", color: "#fff", border: "none", padding: "8px 12px", borderRadius: 8 }}
-                            >
-                              {processingId === id ? "Processing..." : "Reject"}
+                            <button className="mr-btn mr-btn-reject" onClick={() => openRejectModal(id)} disabled={processingId === id}>
+                              {processingId === id ? "..." : "Reject"}
                             </button>
                           </>
                         ) : (
-                          // not super: only allow requester to cancel pending
                           isRequester ? (
-                            <button
-                              onClick={() => handleCancel(id)}
-                              disabled={processingId === id}
-                              style={{ background: "#f59e0b", color: "#fff", border: "none", padding: "8px 12px", borderRadius: 8 }}
-                            >
-                              {processingId === id ? "Processing..." : "Cancel"}
+                            <button className="mr-btn" onClick={() => openCancelConfirm(id)} disabled={processingId === id}>
+                              {processingId === id ? "..." : "Cancel"}
                             </button>
                           ) : (
-                            <span style={{ color: "#666" }}>Pending</span>
+                            <span className="mr-processed">Pending</span>
                           )
                         )
                       ) : (
-                        <span style={{ color: "#666" }}>Processed</span>
+                        <span className="mr-processed">Processed</span>
                       )}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+                    </div>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Reject modal */}
+      {showRejectModal && (
+        <div className="mr-modal-overlay" onClick={() => setShowRejectModal(false)}>
+          <div className="mr-modal" onClick={e => e.stopPropagation()}>
+            <h3>Reject Move Request</h3>
+            <div className="mr-modal-sub">Provide a reason for rejecting this request (optional)</div>
+            <textarea
+              className="mr-textarea"
+              rows={4}
+              value={rejectPayload.reason}
+              onChange={(e) => setRejectPayload(prev => ({ ...prev, reason: e.target.value }))}
+              placeholder="Rejection reason (optional)"
+            />
+            <div className="mr-modal-actions">
+              <button className="mr-btn" onClick={() => setShowRejectModal(false)}>Cancel</button>
+              <button className="mr-btn mr-btn-reject" onClick={submitReject} disabled={!rejectPayload.id}>Reject</button>
+            </div>
+          </div>
         </div>
       )}
     </div>
   );
-};
-
-// simple cell styles
-const thStyle = { textAlign: "left", padding: "8px 10px", background: "#fafafa" };
-const tdStyle = { padding: "10px" };
-
-export default MoveRequestsList;
+}

@@ -3,34 +3,65 @@ import React from "react";
 import { NavLink, useNavigate } from "react-router-dom";
 import "./Sidebar.css";
 
+/**
+ * Robust Sidebar
+ * - tolerant role parser (string, array, object, mixed)
+ * - builds menuItems only from the provided role-specific lists
+ * - safe defaults (no base menu injected)
+ */
+
 const Sidebar = ({ user, onLogout }) => {
   const navigate = useNavigate();
 
+  // parse roles from user prop into normalized array of strings like ["superadmin"]
   const getRolesFromUserProp = (u) => {
     if (!u) return [];
-    const raw = u.role ?? u.roles ?? null;
+
+    let raw = u.role ?? u.roles ?? null;
     if (!raw) return [];
-    if (Array.isArray(raw)) return raw.map(r => String(r).toLowerCase());
-    return [String(raw).toLowerCase()];
+
+    // single object like { name: 'SuperAdmin' } or { roleName: 'super admin' }
+    if (typeof raw === "object" && !Array.isArray(raw)) {
+      const values = Object.values(raw).filter(v => typeof v === "string" && v.trim().length);
+      if (values.length) {
+        // pick the first meaningful string and normalize
+        return [values[0].toLowerCase().replace(/\s+/g, "")];
+      }
+      return [];
+    }
+
+    // single string
+    if (typeof raw === "string") {
+      return [raw.toLowerCase().replace(/\s+/g, "")];
+    }
+
+    // array of mixed items
+    if (Array.isArray(raw)) {
+      return raw
+        .map(r => {
+          if (!r) return null;
+          if (typeof r === "string") return r.toLowerCase().replace(/\s+/g, "");
+          if (typeof r === "object") {
+            const vals = Object.values(r).filter(v => typeof v === "string" && v.trim().length);
+            if (vals.length) return vals[0].toLowerCase().replace(/\s+/g, "");
+            return null;
+          }
+          return String(r).toLowerCase().replace(/\s+/g, "");
+        })
+        .filter(Boolean);
+    }
+
+    return [];
   };
 
-  const roles = getRolesFromUserProp(user);
+  const roles = getRolesFromUserProp(user || {});
 
-  const baseMenu = [
-    { name: "Dashboard", icon: "fa-solid fa-chart-line", path: "/" },
-    { name: "Patients (Pets)", icon: "fa-solid fa-dog", path: "/pets" },
-    { name: "Pet Detail (Demo)", icon: "fa-solid fa-id-badge", path: "/pet-detail/1" },
-    { name: "Profile", icon: "fa-regular fa-user", path: "/profile" },
-    { name: "Appointments", icon: "fa-regular fa-calendar", path: "/appointments" },
-    { name: "Inventory", icon: "fa-solid fa-box", path: "/inventory" },
-    { name: "Branch Overview", icon: "fa-solid fa-layer-group", path: "/branches/overview" },
-  ];
-
+  // role-specific menus (only the pages you provided)
   const ownerMenu = [
     { name: "Owner Dashboard", icon: "fa-solid fa-chart-line", path: "/" },
     { name: "Owner Profile", icon: "fa-regular fa-user", path: "/profile" },
     { name: "Owner Pets", icon: "fa-solid fa-dog", path: "/pets" },
-    { name: "Owner Pet Detail ", icon: "fa-solid fa-id-badge", path: "/pet-detail/1" },
+    { name: "Owner Pet Detail", icon: "fa-solid fa-id-badge", path: "/pet-detail/1" },
     { name: "Owner Appointments", icon: "fa-regular fa-calendar", path: "/appointments" },
   ];
 
@@ -40,40 +71,62 @@ const Sidebar = ({ user, onLogout }) => {
     { name: "Manage Users & Roles", icon: "fa-solid fa-users-gear", path: "/superadmin/roles" },
     { name: "Move Customers & Staff", icon: "fa-solid fa-arrows-rotate", path: "/branches/transfer" },
     { name: "Move Requests", icon: "fa-solid fa-list", path: "/branches/move-requests" },
+    { name: "Patients (Pets)", icon: "fa-solid fa-dog", path: "/pets" },
     { name: "Consolidated View", icon: "fa-solid fa-chart-pie", path: "/consolidated" },
-    { name: "Cash Flow", icon: "fa-solid fa-money-bill", path: "/cash" },
+    { name: "Update Inventory", icon: "fa-solid fa-boxes-packing", path: "/admin/inventory/update" },
+    { name: "Appointments", icon: "fa-regular fa-calendar", path: "/appointments" },
+    { name: "Inventory", icon: "fa-solid fa-box", path: "/inventory" }
   ];
 
   const branchAdminMenu = [
     { name: "Branch Admin Dashboard", icon: "fa-solid fa-chart-pie", path: "/admin/dashboard" },
     { name: "Request Transfer (staff/customer)", icon: "fa-solid fa-paper-plane", path: "/branches/transfer-request" },
     { name: "View Move Requests", icon: "fa-solid fa-list", path: "/branches/move-requests" },
-    { name: "Move Request History", icon: "fa-solid fa-clock-rotate-left", path: "/branches/history" },
-    { name: "Stock Alerts & Appointments", icon: "fa-solid fa-bell", path: "/admin/alerts" },
     { name: "Update Inventory", icon: "fa-solid fa-boxes-packing", path: "/admin/inventory/update" },
     { name: "Branch Summary", icon: "fa-solid fa-layer-group", path: "/branch-summary" },
-    { name: "Cash Flow", icon: "fa-solid fa-money-bill", path: "/cash" },
+    { name: "Profile", icon: "fa-regular fa-user", path: "/profile" },
+    { name: "Patients (Pets)", icon: "fa-solid fa-dog", path: "/pets" },
+    { name: "Appointments", icon: "fa-regular fa-calendar", path: "/appointments" },
+    { name: "Inventory", icon: "fa-solid fa-box", path: "/inventory" }
+  ];
+
+  const doctorMenu = [
+    { name: "Doctor Dashboard", icon: "fa-solid fa-stethoscope", path: "/doctor" },
+    { name: "Profile", icon: "fa-regular fa-user", path: "/profile" },
+    { name: "Appointments", icon: "fa-regular fa-calendar", path: "/appointments" },
+    { name: "Update Inventory", icon: "fa-solid fa-boxes-packing", path: "/admin/inventory/update" },
+    { name: "Inventory", icon: "fa-solid fa-box", path: "/inventory" },
+    { name: "Patients (Pets)", icon: "fa-solid fa-dog", path: "/pets" },
   ];
 
   const staffMenu = [
     { name: "Staff Dashboard", icon: "fa-solid fa-user-nurse", path: "/staff-dashboard" },
-    { name: "My Appointments", icon: "fa-regular fa-calendar", path: "/appointments" },
-    { name: "My Schedule", icon: "fa-solid fa-clock", path: "/schedule" },
+    { name: "Profile", icon: "fa-regular fa-user", path: "/profile" },
+    { name: "Appointments", icon: "fa-regular fa-calendar", path: "/appointments" },
     { name: "Inventory", icon: "fa-solid fa-box", path: "/inventory" },
+    { name: "Patients (Pets)", icon: "fa-solid fa-dog", path: "/pets" },
   ];
 
-  let menuItems = [...baseMenu];
+  // build menuItems safely
+  let menuItems = [];
 
   if (roles.includes("superadmin")) {
-    menuItems = [...superAdminMenu, ...baseMenu];
+    menuItems = superAdminMenu;
   } else if (roles.includes("branchadmin")) {
-    menuItems = [...branchAdminMenu, ...baseMenu];
+    menuItems = branchAdminMenu;
+  } else if (roles.includes("doctor")) {
+    menuItems = doctorMenu;
   } else if (roles.includes("staff")) {
-    menuItems = [...staffMenu, ...baseMenu];
+    menuItems = staffMenu;
   } else if (roles.includes("owner")) {
-    menuItems = [...ownerMenu];
+    menuItems = ownerMenu;
   } else {
-    menuItems = [...baseMenu];
+    // fallback: if no recognized role, show a minimal set (you can change or leave empty)
+    menuItems = [
+      { name: "Profile", icon: "fa-regular fa-user", path: "/profile" },
+      { name: "Patients (Pets)", icon: "fa-solid fa-dog", path: "/pets" },
+      { name: "Appointments", icon: "fa-regular fa-calendar", path: "/appointments" },
+    ];
   }
 
   const handleLogoutClick = async () => {
@@ -96,7 +149,7 @@ const Sidebar = ({ user, onLogout }) => {
               to={item.path}
               className={({ isActive }) => (isActive ? "menu-item active" : "menu-item")}
             >
-              <i className={item.icon} style={{ width: 20 }}></i>
+              <i className={item.icon} style={{ width: 20 }} aria-hidden="true" />
               <span>{item.name}</span>
             </NavLink>
           ))}
@@ -111,7 +164,7 @@ const Sidebar = ({ user, onLogout }) => {
         </div>
 
         <button className="logout-btn" onClick={handleLogoutClick}>
-          <i className="fa-solid fa-right-from-bracket"></i> Logout
+          <i className="fa-solid fa-right-from-bracket" aria-hidden="true"></i> Logout
         </button>
       </div>
     </div>
