@@ -18,7 +18,6 @@ import StaffPetDetail from "./pages/PetDetail.jsx";
 import StaffAppointments from "./pages/StaffAppointments.jsx"; 
 import Inventory from "./pages/Inventory";
 import CashFlow from "./pages/CashFlow";
-import ConsolidatedView from "./pages/ConsolidatedView";
 import StaffDashboard from "./pages/StaffDashboard";
 
 // Admin pages
@@ -34,6 +33,7 @@ import UserRoleManage from "./pages/superAdmin/UserRoleManage.jsx";
 import BranchManage from "./pages/superAdmin/BranchManage";
 import BranchTransfer from "./pages/superAdmin/BranchTransfer";
 import SuperAdmin from "./pages/superAdmin/SuperAdmin";
+import ConsolidatedCharts from "./pages/ConsolidatedCharts.jsx";
 
 // Layout
 import MainLayout from "./layout/MainLayout";
@@ -128,7 +128,6 @@ function App() {
               <Route path="appointments" element={ isOwner ? (<Appointments user={user} />) : (<StaffAppointments user={user} />)}/>
               <Route path="inventory" element={<Inventory user={user} />} />
               <Route path="cash" element={<CashFlow user={user} />} />
-              <Route path="/consolidated" element={<ConsolidatedView />} />
               <Route path="/staff-dashboard" element={<StaffDashboard />} />
 
               {/* admin area */}
@@ -144,6 +143,7 @@ function App() {
               <Route path="branches/transfer-request" element={<MoveRequest user={user} />} />
               <Route path="branches/move-requests" element={<MoveRequestsList user={user} />} />
               <Route path="branches/transfer" element={<BranchTransfer user={user} />} />
+              <Route path="consolidated" element={<ConsolidatedCharts user={user} />} />
             </Route>
 
             <Route path="/login" element={<Navigate to="/" replace />} />

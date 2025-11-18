@@ -46,6 +46,9 @@ export default function BranchManage() {
   // medicines modal
   const [medModal, setMedModal] = useState({ open: false, branchId: null, loading: false, medicines: [], error: null });
 
+  // loading per-branch for assign action
+  const [assignLoading, setAssignLoading] = useState({}); // { [branchId]: true/false }
+
   useEffect(() => { fetchManagers(); }, []);
 
   // fetch branches whenever debounced query or page changes
@@ -243,52 +246,140 @@ export default function BranchManage() {
     }
   };
 
+  // confirm then assign manager (shows confirmation if replacing an existing manager)
+  const confirmAssign = (branch, newManagerId) => {
+    const prevId = idOf(branch.manager || branch.managerId);
+    // if unassigning (empty) or assigning same manager, ask simple confirm for unassign
+    if (!newManagerId) {
+      if (!window.confirm(`คุณแน่ใจจะยกเลิกผู้จัดการของสาขา: ${branch.branchName} ?`)) return;
+      assignManager(idOf(branch), "");
+      return;
+    }
+    // if replacing different manager, ask for confirmation showing names
+    if (prevId && String(prevId) !== String(newManagerId)) {
+      const prevName = branch.managerName || prevId;
+      const newName = (managers.find(m=>String(idOf(m))===String(newManagerId)) || {}).name || newManagerId;
+      if (!window.confirm(`ย้ายผู้จัดการ
+
+จาก: ${prevName}
+ไปที่สาขา: ${branch.branchName}
+เป็น: ${newName}
+
+ดำเนินการต่อ?`)) return;
+    }
+    // otherwise just assign
+    assignManager(idOf(branch), newManagerId);
+  };
+
+  // assign manager and also attempt to update the user's branch
   const assignManager = async (branchId, managerId) => {
     if (!branchId) return;
     const idStr = String(branchId);
-    // optimistic UI
+
+    // remember previous branch state for rollback
+    const prevBranches = [...branches];
+    // optimistic update: set managerId on branch
     setBranches(prev => prev.map(b => (String(idOf(b)) === idStr ? { ...b, managerId } : b)));
+
+    // set loading for this branch
+    setAssignLoading(prev => ({ ...prev, [idStr]: true }));
+
     try {
+      // 1) update branch record (try multiple endpoints)
       const tryUrls = [
         `/api/branches/${branchId}`,
         `/branches/${branchId}`
       ];
-      let res = null;
+      let branchRes = null;
       for (const u of tryUrls) {
         try {
-          res = await api.put(u, { managerId: managerId || null });
-          if (res) break;
-        } catch (e) {}
+          branchRes = await api.put(u, { managerId: managerId || null });
+          if (branchRes) break;
+        } catch (e) { /* try next */ }
+      }
+      if (!branchRes) {
+        // some backends may require a specific body shape like { manager: managerId }
+        for (const u of tryUrls) {
+          try {
+            branchRes = await api.put(u, { manager: managerId || null });
+            if (branchRes) break;
+          } catch (e) {}
+        }
       }
 
+      // 2) update the user's branch (so the manager user is moved to this branch)
       if (managerId) {
         const tryUserUrls = [
           `/api/users/${managerId}`,
           `/users/${managerId}`,
           `/api/users/${managerId}/assign-branch`,
-          `/api/branchAdmin/assignManager`
+          `/api/branchAdmin/assignManager`,
+          `/api/users/assign-branch`
         ];
+        let userUpdated = false;
         for (const u of tryUserUrls) {
           try {
-            if (u.endsWith("/assignManager")) {
+            // some endpoints accept PUT with { branchId }, some accept POST with { userId, branchId }
+            if (u.endsWith("/assignManager") || u.endsWith("/assign-branch") || u.endsWith("/users/assign-branch")) {
+              // try POST with both fields (safe)
               await api.post(u, { userId: managerId, branchId });
             } else {
+              // try PUT (update user document)
               await api.put(u, { branchId });
             }
+            userUpdated = true;
             break;
-          } catch (e) {}
+          } catch (e) {
+            // try next
+          }
+        }
+        if (!userUpdated) {
+          // as fallback, try PUT to /api/users with body { id, branchId }
+          try {
+            await api.put(`/api/users`, { id: managerId, branchId });
+          } catch (e) {
+            // ignore here - we'll proceed but could rollback if necessary
+          }
         }
       }
 
-      const updated = res?.data || null;
-      if (updated) {
-        setBranches(prev => prev.map(b => (String(idOf(b)) === idStr ? (updated || b) : b)));
-        if (detail && String(idOf(detail)) === idStr) setDetail(prev => ({ ...(prev || {}), ...(updated || {}) }));
+      // 3) update local branch entry with server response if available
+      const updatedBranch = branchRes?.data || branchRes?.data?.branch || branchRes?.data?.data || null;
+      if (updatedBranch) {
+        setBranches(prev => prev.map(b => (String(idOf(b)) === idStr ? { ...(b || {}), ...(updatedBranch || {}) } : b)));
+        // if detail modal open, update it too
+        if (detail && String(idOf(detail)) === idStr) {
+          setDetail(prev => ({ ...(prev || {}), ...(updatedBranch || {}) }));
+        }
+      } else {
+        // If no server returned branch object, try to populate managerName locally from managers list
+        if (managerId) {
+          const mgr = managers.find(m => String(idOf(m)) === String(managerId));
+          if (mgr) {
+            setBranches(prev => prev.map(b => (String(idOf(b)) === idStr ? { ...b, managerName: (mgr.name || mgr.username || mgr.email) } : b)));
+          }
+        } else {
+          // unassign manager
+          setBranches(prev => prev.map(b => (String(idOf(b)) === idStr ? { ...b, managerName: undefined } : b)));
+        }
       }
+
+      // refresh managers list (in case backend changed user's branch field)
+      fetchManagers();
     } catch (err) {
       console.error("assignManager err:", err);
       alert(err?.response?.data?.error || err.message || "Assign failed");
+      // rollback to previous branches state
+      setBranches(prevBranches);
+      // try refetch to sync state
       fetchBranches({ page, q: debQ });
+    } finally {
+      // clear loading
+      setAssignLoading(prev => {
+        const copy = { ...(prev || {}) };
+        delete copy[idStr];
+        return copy;
+      });
     }
   };
 
@@ -314,7 +405,6 @@ export default function BranchManage() {
       if (Array.isArray(res.data)) meds = res.data;
       else if (Array.isArray(res.data?.medicines)) meds = res.data.medicines;
       else if (Array.isArray(res.data?.data)) meds = res.data.data;
-      else if (Array.isArray(res.data?.branch?.medicines)) meds = res.data.branch.medicines;
       else if (Array.isArray(res.data?.branch?.medicines)) meds = res.data.branch.medicines;
       // fallback: if res.data has medicines nested as object entries
       setMedModal({ open: true, branchId: id, loading: false, medicines: meds || [], error: null });
@@ -380,10 +470,16 @@ export default function BranchManage() {
                 <td>
                   <div className="manager-line">
                     <div className="mgr-name small">{b.managerName || (b.manager && (b.manager.name || b.manager.username)) || (idOf(b.managerId) ? "" : "—")}</div>
-                    <select className="bm-select" value={idOf(b.manager || b.managerId) || ""} onChange={(e) => assignManager(idOf(b), e.target.value)}>
+                    <select
+                      className="bm-select"
+                      value={idOf(b.manager || b.managerId) || ""}
+                      onChange={(e) => confirmAssign(b, e.target.value)}
+                      disabled={!!assignLoading[String(idOf(b))]}
+                    >
                       <option value="">— assign —</option>
                       {managers.map(m => <option key={idOf(m)} value={idOf(m)}>{managerLabel(m)}</option>)}
                     </select>
+                    {assignLoading[String(idOf(b))] && <span className="small muted" style={{marginLeft:8}}>Saving…</span>}
                   </div>
                 </td>
 

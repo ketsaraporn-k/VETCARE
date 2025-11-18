@@ -72,9 +72,9 @@ const Sidebar = ({ user, onLogout }) => {
     { name: "Move Customers & Staff", icon: "fa-solid fa-arrows-rotate", path: "/branches/transfer" },
     { name: "Move Requests", icon: "fa-solid fa-list", path: "/branches/move-requests" },
     { name: "Patients (Pets)", icon: "fa-solid fa-dog", path: "/pets" },
-    { name: "Consolidated View", icon: "fa-solid fa-chart-pie", path: "/consolidated" },
     { name: "Update Inventory", icon: "fa-solid fa-boxes-packing", path: "/admin/inventory/update" },
-    { name: "Appointments", icon: "fa-regular fa-calendar", path: "/appointments" }
+    { name: "Appointments", icon: "fa-regular fa-calendar", path: "/appointments" },
+    { name: "Consolidated Chart", icon: "fa-solid fa-layer-group", path: "/consolidated" }
   ];
 
   const branchAdminMenu = [
@@ -87,6 +87,7 @@ const Sidebar = ({ user, onLogout }) => {
     { name: "Patients (Pets)", icon: "fa-solid fa-dog", path: "/pets" },
     { name: "Appointments", icon: "fa-regular fa-calendar", path: "/appointments" },
     { name: "Inventory", icon: "fa-solid fa-box", path: "/inventory" }
+
   ];
 
   const doctorMenu = [
