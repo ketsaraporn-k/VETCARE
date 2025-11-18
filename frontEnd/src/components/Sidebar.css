@@ -18,14 +18,14 @@
 }
 
 .sidebar-logo img {
-  width: 36px;
-  height: 36px;
+  width: 66px;
+  height: 66px;
 }
 
 .sidebar-logo span {
   color: #ff7a00;
   font-weight: bold;
-  font-size: 18px;
+  font-size: 40px;
 }
 
 .sidebar nav .menu-item {
@@ -97,4 +97,35 @@
 
 .logout-btn:hover {
   background-color: #d9363e;
+}
+
+
+/* Sidebar.css */
+
+.sidebar {
+  position: fixed;       /* เพิ่ม: ทำให้ Sidebar ติดหน้าจอ */
+  top: 0;                /* เพิ่ม: อยู่บนสุด */
+  left: 0;               /* เพิ่ม: อยู่ด้านซ้าย */
+  height: 100vh;         /* เพิ่ม: ความสูงเต็มหน้าจอ */
+  width: 250px;
+  background-color: #fff;
+  border-right: 1px solid #ddd;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 20px 10px;
+  overflow-y: auto;      /* เพิ่ม: ให้ scroll ถ้าเมนูเยอะ */
+  z-index: 1000;         /* เพิ่ม: ให้ Sidebar อยู่เหนือ content */
+}
+
+/* ทำให้ nav ภายใน sidebar scroll ได้ถ้าเมนูเยอะ */
+.sidebar nav {
+  flex-grow: 1;          /* เพิ่ม: ให้ nav ขยายเต็ม height ของ sidebar */
+  overflow-y: auto;      /* เพิ่ม: scroll ถ้าเมนูยาว */
+}
+
+/* ส่วนของ main content ต้องเว้นที่ให้ Sidebar */
+.main-content {          /* เพิ่มใหม่: สำหรับ container หลัก */
+  margin-left: 250px;    /* ให้ content ไม่ซ้อน Sidebar */
+  padding: 20px;
 }

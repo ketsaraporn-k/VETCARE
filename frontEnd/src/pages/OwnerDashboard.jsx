@@ -1,30 +1,92 @@
-import React from "react";
-import "./OwnerDashboard.css";
+// src/pages/OwnerDashboard.jsx
+import React, { useEffect, useState } from "react";
 import NotificationPopup from "../components/NotificationPopup";
+import "./OwnerDashboard.css";   // ใช้ไฟล์ CSS แยก ไม่กระทบ Dashboard อื่น
 
-const Dashboard = () => {
+const OwnerDashboard = () => {
+
+  // -----------------------------
+  // (NEW) state สำหรับข้อมูลจริง
+  // -----------------------------
+  const [pets, setPets] = useState([]);
+  const [appointments, setAppointments] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  // -----------------------------
+  // (NEW) โหลดข้อมูลจาก backend
+  // -----------------------------
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        // ดึงสัตว์เลี้ยงทั้งหมดของ owner
+        const resPets = await fetch("http://localhost:3000/api/pets/my", {
+          credentials: "include", // สำคัญมาก ใช้ cookie auth
+        });
+        const petsData = await resPets.json();
+
+        // ดึงนัดหมายทั้งหมด
+        const resAppt = await fetch("http://localhost:3000/api/owner/appointments", {
+          credentials: "include",
+        });
+        const apptData = await resAppt.json();
+
+        setPets(petsData);
+        setAppointments(apptData);
+      } catch (err) {
+        console.error("Dashboard load error:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, []);
+
+  if (loading) return <p className="owner-loading">Loading...</p>;
+
+  const todayAppointments = appointments.filter(a => {
+    const today = new Date().toDateString();
+    return new Date(a.scheduledAt).toDateString() === today;
+  });
+
+  const upcoming = appointments[0] || null;
+
   return (
-    <div className="dashboard-container">
-      <div className="dashboard-card">
-        <h3>Today's Appointments</h3>
-        <p>You have 5 appointments today.</p>
+    <div className="owner-dashboard">
+
+      {/* การ์ดจำนวนสัตว์เลี้ยง */}
+      <div className="owner-card">
+        <h3>🐶 สัตว์เลี้ยงทั้งหมด</h3>
+        <p>{pets.length} ตัว</p>
       </div>
 
-      <div className="dashboard-card">
-        <h3>Active Patients</h3>
-        <p>12 pets are under care.</p>
+      {/* การ์ดนัดวันนี้ */}
+      <div className="owner-card">
+        <h3>📅 นัดวันนี้</h3>
+        <p>{todayAppointments.length} รายการ</p>
       </div>
 
-      <div className="p-6">
-      <h1 className="text-xl font-bold mb-3">🏥 แนะนำคลินิกของเรา</h1>
-      <p>ยินดีต้อนรับสู่ระบบดูแลสัตว์เลี้ยงของคุณ</p>
-      <NotificationPopup />
-    </div>
+      {/* นัดถัดไป */}
+      <div className="owner-card">
+        <h3>⏭ นัดถัดไป</h3>
+        {upcoming ? (
+          <p>
+            {upcoming.petName} — {new Date(upcoming.scheduledAt).toLocaleString()}
+          </p>
+        ) : (
+          <p>ไม่มีนัดหมาย</p>
+        )}
+      </div>
+
+      {/* Welcome message + Notification popup */}
+      <div className="owner-section">
+        <h2 className="owner-title">🎉 ยินดีต้อนรับ!</h2>
+        <p>ระบบดูแลสัตว์เลี้ยงของคุณ</p>
+        <NotificationPopup />
+      </div>
 
     </div>
-
-    
   );
 };
 
-export default Dashboard;
+export default OwnerDashboard;

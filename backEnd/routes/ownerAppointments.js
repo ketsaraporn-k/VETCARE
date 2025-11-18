@@ -75,4 +75,82 @@ router.get("/", auth, async (req, res) => {
   }
 });
 
+// GET /api/owner/appointments/:id
+router.get("/:id", auth, async (req, res) => {
+  try {
+    const ownerId = req.user.id || req.user._id;
+    const apptId = req.params.id;
+
+    // ดึง owner + pets
+    const user = await User.findById(ownerId).select("pets").lean();
+    const petIds = user.pets.map(p => p._id.toString());
+
+    // หา schedule ในทุก branch
+    const branch = await Branch.findOne({
+      "schedules._id": apptId,
+      "schedules.petId": { $in: petIds }
+    }).select("branchName schedules").lean();
+
+    if (!branch) {
+      return res.status(404).json({ error: "Appointment not found" });
+    }
+
+    const schedule = branch.schedules.find(s => s._id.toString() === apptId);
+
+    return res.json({
+      id: schedule._id,
+      petId: schedule.petId,
+      serviceType: schedule.serviceType,
+      scheduledAt: schedule.scheduledAt,
+      durationMinutes: schedule.durationMinutes,
+      endAt: schedule.endAt,
+      status: schedule.status,
+      notes: schedule.notes,
+      branchName: branch.branchName
+    });
+
+  } catch (err) {
+    console.error("owner get appointment detail error:", err);
+    res.status(500).json({ error: "SERVER_ERROR" });
+  }
+});
+
+// PUT /api/owner/appointments/:id/cancel
+router.put("/:id/cancel", auth, async (req, res) => {
+  try {
+    const ownerId = req.user.id || req.user._id;
+    const apptId = req.params.id;
+
+    const user = await User.findById(ownerId).select("pets").lean();
+    const petIds = user.pets.map(p => p._id.toString());
+
+    // หา branch ที่มีนัดนี้และเป็นของ owner
+    const branch = await Branch.findOne({
+      "schedules._id": apptId,
+      "schedules.petId": { $in: petIds }
+    });
+
+    if (!branch) {
+      return res.status(404).json({ error: "Appointment not found" });
+    }
+
+    const schedule = branch.schedules.id(apptId);
+    if (!schedule) {
+      return res.status(404).json({ error: "Appointment not found" });
+    }
+
+    schedule.status = "cancelled";
+    schedule.notes = "Cancelled by owner";
+    branch.updatedAt = new Date();
+    await branch.save();
+
+    return res.json({ message: "Appointment cancelled" });
+
+  } catch (err) {
+    console.error("owner cancel appointment error:", err);
+    res.status(500).json({ error: "SERVER_ERROR" });
+  }
+});
+
+
 module.exports = router;

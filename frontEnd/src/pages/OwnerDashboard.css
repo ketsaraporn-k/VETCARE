@@ -1,23 +1,38 @@
-/* src/pages/Dashboard.css */
-.dashboard-container {
+/* src/pages/OwnerDashboard.css */
+
+.owner-dashboard {
   display: flex;
   gap: 20px;
   flex-wrap: wrap;
-}
-
-.dashboard-card {
-  background-color: #fff;
-  border-radius: 10px;
   padding: 20px;
-  flex: 1 1 300px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
-.dashboard-card h3 {
-  margin-top: 0;
-  color: #333;
+.owner-card {
+  background: #ffffff;
+  border-radius: 14px;
+  padding: 20px;
+  flex: 1 1 260px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
 }
 
-.dashboard-card p {
-  color: #666;
+.owner-card h3 {
+  margin: 0 0 8px;
+  color: #222;
+}
+
+.owner-section {
+  width: 100%;
+  margin-top: 20px;
+  padding: 20px;
+  background: #ffffff;
+  border-radius: 14px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+}
+
+.owner-title {
+  margin: 0 0 10px;
+}
+
+.owner-loading {
+  padding: 20px;
 }

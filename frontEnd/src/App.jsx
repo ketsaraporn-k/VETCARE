@@ -4,11 +4,12 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-d
 import api from "./api/axiosConfig";
 
 // Pages...
-import Dashboard from "./pages/OwnerDashboard.jsx";
+import Dashboard from "./pages/Dashboard.jsx";
 import Pets from "./pages/OwnerPets.jsx";
 import PetDetail from "./pages/OwnerPetDetail.jsx";
 import Profile from "./pages/OwnerProfile.jsx";
 import Appointments from "./pages/OwnerAppointments.jsx";
+import OwnerDashboard from "./pages/OwnerDashboard.jsx";
 
 
 import Auth from "./components/Auth";
@@ -115,15 +116,22 @@ function App() {
               
               <Route index element={<Dashboard user={user} />} />
 
+              {/* หน้า Owner Dashboard สำหรับ Owner */}
+              {/* เพิ่ม Route path="/owner" แยกจาก Dashboard เดิม */}
+              {isOwner && <Route path="owner" element={<OwnerDashboard user={user} />} />}
+                
+
               {/* Pets list */}
               <Route path="pets" element={isOwner ? <Pets user={user} /> : <StaffPets user={user} />} />
 
-              {/* Pet detail (อย่าซ้ำเส้นทาง) */}
+              {/* Pet detail owner */}
               {isOwner ? (
                 <Route path="pet-detail/:id" element={<PetDetail user={user} />} />
               ) : (
                 <Route path="pet-detail/:ownerId/:petId" element={<StaffPetDetail user={user} />} />
               )}
+              
+              
 
               {/* อื่น ๆ */}
               <Route path="profile" element={<Profile user={user} />} />

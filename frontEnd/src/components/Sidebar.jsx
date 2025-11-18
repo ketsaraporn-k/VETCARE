@@ -19,7 +19,7 @@ const Sidebar = ({ user, onLogout }) => {
   const baseMenu = [
     { name: "Dashboard", icon: "fa-solid fa-chart-line", path: "/" },
     { name: "Patients (Pets)", icon: "fa-solid fa-dog", path: "/pets" },
-    { name: "Pet Detail (Demo)", icon: "fa-solid fa-id-badge", path: "/pet-detail/1" },
+    /* { name: "Pet Detail (Demo)", icon: "fa-solid fa-id-badge", path: "/pet-detail/1" }, */
     { name: "Profile", icon: "fa-regular fa-user", path: "/profile" },
     { name: "Appointments", icon: "fa-regular fa-calendar", path: "/appointments" },
     { name: "Inventory", icon: "fa-solid fa-box", path: "/inventory" },
@@ -27,10 +27,10 @@ const Sidebar = ({ user, onLogout }) => {
   ];
 
   const ownerMenu = [
-    { name: "Owner Dashboard", icon: "fa-solid fa-chart-line", path: "/" },
+    { name: "Owner Dashboard", icon: "fa-solid fa-chart-line", path: "/owner" },
     { name: "Owner Profile", icon: "fa-regular fa-user", path: "/profile" },
     { name: "Owner Pets", icon: "fa-solid fa-dog", path: "/pets" },
-    { name: "Owner Pet Detail ", icon: "fa-solid fa-id-badge", path: "/pet-detail/1" },
+    /* { name: "Owner Pet Detail ", icon: "fa-solid fa-id-badge", path: "/pet-detail/1" }, */
     { name: "Owner Appointments", icon: "fa-regular fa-calendar", path: "/appointments" },
   ];
 
@@ -85,7 +85,7 @@ const Sidebar = ({ user, onLogout }) => {
     <div className="sidebar">
       <div>
         <div className="sidebar-logo">
-          <img src="/logo-vet.png" alt="logo" />
+          <img src="/clinic.png" alt="logo" />
           <span>VetCare</span>
         </div>
 

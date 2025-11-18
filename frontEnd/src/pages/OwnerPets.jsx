@@ -32,7 +32,7 @@ const Pets = () => {
             <th>ID</th>
             <th>Name</th>
             <th>Species</th>
-            <th>Owner</th>
+            {/* <th>Owner</th> */}
             <th>Action</th>
           </tr>
         </thead>
@@ -42,7 +42,7 @@ const Pets = () => {
               <td>{pet._id}</td>
               <td>{pet.name}</td>
               <td>{pet.species}</td>
-              <td>{pet.ownerName}</td>
+              {/* <td>{pet.ownerName}</td> */}
               <td>
                 <Link to={`/pet-detail/${pet._id}`} className="btn-view">
                   🔍 View Detail

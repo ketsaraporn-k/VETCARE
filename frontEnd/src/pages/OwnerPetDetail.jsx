@@ -8,6 +8,7 @@ const OwnerPetDetail = () => {
   const { id } = useParams();
   const [pet, setPet] = useState(null);
   const [loading, setLoading] = useState(true);
+ 
 
   useEffect(() => {
     axios
