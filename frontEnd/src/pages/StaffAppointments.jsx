@@ -120,6 +120,15 @@ const StaffAppointments = ({ user }) => {
   const isDoctor = role === "doctor";
   const isBranchAdmin = role === "branchadmin";
 
+  // branch ที่ใช้ดึง pets / doctors สำหรับ dropdown
+  const activeBranchIdForLookups = useMemo(() => {
+    if (isSuper) {
+      if (branchFilter === "ALL") return null;
+      return branchFilter;
+    }
+    return user?.branchId || null;
+  }, [isSuper, branchFilter, user?.branchId]);
+
   const todayKey = toKey(new Date());
 
   /* ===== Load branch name ===== */
@@ -186,11 +195,12 @@ const StaffAppointments = ({ user }) => {
 
   /* ===== Load pets ===== */
   const fetchPets = async () => {
-    if (!user?.branchId || isSuper) return;
+    const branchId = activeBranchIdForLookups;
+    if (!branchId) return;
     setLoadingPets(true);
     try {
       const res = await api.get("/api/staff/pets", {
-        params: { branchId: user.branchId, page: 1, pageSize: 100 },
+        params: { branchId, page: 1, pageSize: 100 },
       });
 
       const raw = res.data?.data || res.data?.pets || res.data || [];
@@ -213,11 +223,12 @@ const StaffAppointments = ({ user }) => {
 
   /* ===== Load doctors ===== */
   const fetchDoctors = async () => {
-    if (!user?.branchId) return;
+    const branchId = activeBranchIdForLookups;
+    if (!branchId) return;
     setLoadingDoctors(true);
     try {
       const res = await api.get("/api/staff/doctors", {
-        params: { branchId: user.branchId },
+        params: { branchId },
       });
       const raw = res.data?.data || res.data || [];
       const mapped = (Array.isArray(raw) ? raw : []).map((d) => ({
@@ -234,12 +245,18 @@ const StaffAppointments = ({ user }) => {
     }
   };
 
+  // โหลด appointments ตาม role / branch
   useEffect(() => {
     fetchAppointments();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.branchId, role]);
+
+  // โหลด pets + doctors ตาม branch ที่เลือก
+  useEffect(() => {
     fetchPets();
     fetchDoctors();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user?.branchId, role]);
+  }, [activeBranchIdForLookups]);
 
   /* ===== Branch options for super ===== */
   const branchOptions = useMemo(() => {
@@ -561,9 +578,7 @@ const StaffAppointments = ({ user }) => {
   /* ===== Change status ===== */
   const updateStatus = async (row, newStatus) => {
     try {
-      const branchId = isSuper
-        ? row.branch?.id || row.branchId
-        : user.branchId;
+      const branchId = isSuper ? row.branch?.id || row.branchId : user.branchId;
 
       if (!branchId) {
         alert("ไม่พบ branchId ของนัดหมายนี้");
@@ -585,9 +600,7 @@ const StaffAppointments = ({ user }) => {
     if (!window.confirm("ต้องการลบนัดหมายนี้หรือไม่?")) return;
 
     try {
-      const branchId = isSuper
-        ? row.branch?.id || row.branchId
-        : user.branchId;
+      const branchId = isSuper ? row.branch?.id || row.branchId : user.branchId;
 
       if (!branchId) {
         alert("ไม่พบ branchId ของนัดหมายนี้");
@@ -612,9 +625,7 @@ const StaffAppointments = ({ user }) => {
               ? "All Appointments (Calendar View)"
               : "Appointments Calendar"}
           </h2>
-          {!isSuper && (
-            <p className="appt-subtitle">Branch: {branchLabel}</p>
-          )}
+          {!isSuper && <p className="appt-subtitle">Branch: {branchLabel}</p>}
         </div>
 
         <div className="appt-header-actions">
@@ -729,9 +740,7 @@ const StaffAppointments = ({ user }) => {
                       </div>
                     </div>
                     <span
-                      className={`status-badge status-${
-                        a.status || "pending"
-                      }`}
+                      className={`status-badge status-${a.status || "pending"}`}
                     >
                       {a.status || "pending"}
                     </span>
@@ -745,9 +754,7 @@ const StaffAppointments = ({ user }) => {
           <div className="appt-list">
             <div className="appt-list-header">
               <h3>Appointments on {formatDateLabel(selectedDate)}</h3>
-              {loading && (
-                <span className="appt-list-loading">Loading…</span>
-              )}
+              {loading && <span className="appt-list-loading">Loading…</span>}
             </div>
 
             {!loading && dayAppointments.length === 0 ? (
@@ -778,17 +785,13 @@ const StaffAppointments = ({ user }) => {
                       </td>
 
                       {isSuper ? (
-                        <td>
-                          {a.branch?.branchName || a.branchName || "-"}
-                        </td>
+                        <td>{a.branch?.branchName || a.branchName || "-"}</td>
                       ) : (
                         <td className="appt-manage-cell">
                           <select
                             className="appt-status-select"
                             value={a.status || "pending"}
-                            onChange={(e) =>
-                              updateStatus(a, e.target.value)
-                            }
+                            onChange={(e) => updateStatus(a, e.target.value)}
                           >
                             <option value="pending">Pending</option>
                             <option value="confirmed">Confirmed</option>
@@ -838,10 +841,7 @@ const StaffAppointments = ({ user }) => {
           className="petdetail-modal-overlay"
           onClick={() => setViewAppt(null)}
         >
-          <div
-            className="petdetail-modal"
-            onClick={(e) => e.stopPropagation()}
-          >
+          <div className="petdetail-modal" onClick={(e) => e.stopPropagation()}>
             <h3 className="modal-title">Appointment Detail</h3>
             <div className="modal-view-content">
               <p>
@@ -867,9 +867,7 @@ const StaffAppointments = ({ user }) => {
               {isSuper && (
                 <p>
                   <strong>Branch:</strong>{" "}
-                  {viewAppt.branch?.branchName ||
-                    viewAppt.branchName ||
-                    "-"}
+                  {viewAppt.branch?.branchName || viewAppt.branchName || "-"}
                 </p>
               )}
             </div>
@@ -889,10 +887,7 @@ const StaffAppointments = ({ user }) => {
       {/* Add / Edit Modal */}
       {showModal && (
         <div className="petdetail-modal-overlay" onClick={closeModal}>
-          <div
-            className="petdetail-modal"
-            onClick={(e) => e.stopPropagation()}
-          >
+          <div className="petdetail-modal" onClick={(e) => e.stopPropagation()}>
             <h3 className="modal-title">
               {editingAppt ? "Edit Appointment" : "Add Appointment"}
             </h3>
