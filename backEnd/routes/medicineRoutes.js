@@ -78,20 +78,39 @@ router.put('/:branchId/:medId', auth, role(['superAdmin', 'branchAdmin', 'doctor
 router.delete('/:branchId/:medId', auth, role(['superAdmin', 'branchAdmin', 'doctor']), async (req, res) => {
   try {
     const { branchId, medId } = req.params;
-    if ((req.user.role || '').toLowerCase() !== 'superadmin' && String(req.user.branchId) !== String(branchId)) {
-      return res.status(403).json({ error: 'Permission denied' });
+
+    // permission: superAdmin หรือ branchAdmin/doctor ของสาขานั้น
+    const userRole = (req.user?.role || '').toString().toLowerCase();
+    if (userRole !== 'superadmin') {
+      const userBranch = String(req.user.branchId || req.user.branch || '');
+      if (!userBranch || String(userBranch) !== String(branchId)) {
+        return res.status(403).json({ error: 'Permission denied' });
+      }
     }
-    const branch = await Branch.findById(branchId);
-    if (!branch) return res.status(404).json({ error: 'Branch not found' });
-    const med = branch.medicines.id(medId);
-    if (!med) return res.status(404).json({ error: 'Medicine not found' });
-    med.remove();
-    await branch.save();
+
+    // atomic remove using $pull so we don't rely on subdoc methods
+    const result = await Branch.updateOne(
+      { _id: branchId },
+      { $pull: { medicines: { _id: medId } } }
+    );
+
+    // handle different mongoose versions (modifiedCount/matchedCount or nModified/n)
+    const matched = (result.matchedCount !== undefined) ? result.matchedCount : result.n;
+    const modified = (result.modifiedCount !== undefined) ? result.modifiedCount : result.nModified;
+
+    if (!matched) {
+      return res.status(404).json({ error: 'Branch not found' });
+    }
+    if (!modified) {
+      return res.status(404).json({ error: 'Medicine not found' });
+    }
+
     return res.json({ message: 'Deleted successfully' });
   } catch (err) {
     console.error('delete medicine err', err);
-    return res.status(500).json({ error: err.message });
+    return res.status(500).json({ error: 'Server error' });
   }
 });
+
 
 module.exports = router;
