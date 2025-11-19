@@ -1,0 +1,82 @@
+/* src/pages/Profile.css */
+
+.profile-container {
+  width: 100%;
+  max-width: 650px;
+  margin: 30px auto;
+  padding: 20px;
+}
+
+.profile-card {
+  background: #ffffff;
+  padding: 25px;
+  border-radius: 12px;
+  box-shadow: 0 0 10px rgba(0,0,0,0.1);
+  display: flex;
+  gap: 25px;
+}
+
+.profile-picture-section {
+  width: 150px;
+  height: 150px;
+}
+
+.profile-img {
+  width: 150px;
+  height: 150px;
+  border-radius: 12px;
+  object-fit: cover;
+  background: #eee;
+}
+
+.profile-img.placeholder {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  color: #777;
+}
+
+.profile-info {
+  flex: 1;
+}
+
+.profile-info input,
+.profile-info textarea {
+  width: 100%;
+  padding: 8px;
+  margin-bottom: 12px;
+  border-radius: 6px;
+  border: 1px solid #ccc;
+}
+
+.edit-btn,
+.save-btn,
+.cancel-btn {
+  padding: 10px 16px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  margin-right: 10px;
+  margin-top: 10px;
+}
+
+.edit-btn {
+  background: #007bff;
+  color: white;
+}
+
+.save-btn {
+  background: #28a745;
+  color: white;
+}
+
+.cancel-btn {
+  background: #dc3545;
+  color: white;
+}
+
+.profile-loading {
+  text-align: center;
+  padding: 40px;
+  font-size: 20px;
+}
