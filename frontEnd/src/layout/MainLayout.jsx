@@ -48,6 +48,9 @@ const MainLayout = ({ user, onLogout }) => {
   } else if (path.startsWith("/branches")) {
     title = "Branches";
     subtitle = "Branch management & transfer requests";
+  } else if (path.startsWith("/employee-profile")) {
+    title = "Employee Profile";
+    subtitle = "----------";
   }
 
   return (

@@ -1,10 +1,10 @@
 
-// src/pages/Profile.jsx
+// src/pages/EmployeeProfile.jsx
 import React, { useState, useEffect } from "react";
-import axios from "../api/axiosConfig";
-import "./Profile.css";
+import axios from "axios";
+import "./EmployeeProfile.css";
 
-const Profile = () => {
+const EmployeeProfile = () => {
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
@@ -142,4 +142,4 @@ const Profile = () => {
   );
 };
 
-export default Profile;
+export default EmployeeProfile;

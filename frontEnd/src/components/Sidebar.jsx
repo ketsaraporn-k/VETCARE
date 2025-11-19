@@ -84,7 +84,7 @@ const Sidebar = ({ user, onLogout }) => {
     { name: "View Move Requests", icon: "fa-solid fa-list", path: "/branches/move-requests" },
     { name: "Update Inventory", icon: "fa-solid fa-boxes-packing", path: "/admin/inventory/update" },
     { name: "Branch Summary", icon: "fa-solid fa-layer-group", path: "/branch-summary" },
-    { name: "Profile", icon: "fa-regular fa-user", path: "/profile" },
+    { name: "Employee Profile", icon: "fa-regular fa-user", path: "/employee-profile" },
     { name: "Patients (Pets)", icon: "fa-solid fa-dog", path: "/pets" },
     { name: "Appointments", icon: "fa-regular fa-calendar", path: "/appointments" },
     { name: "Inventory", icon: "fa-solid fa-box", path: "/inventory" }
@@ -93,7 +93,7 @@ const Sidebar = ({ user, onLogout }) => {
 
   const doctorMenu = [
     { name: "Doctor Dashboard", icon: "fa-solid fa-stethoscope", path: "/doctor" },
-    { name: "Profile", icon: "fa-regular fa-user", path: "/profile" },
+    { name: "Employee Profile", icon: "fa-regular fa-user", path: "/employee-profile" },
     { name: "Appointments", icon: "fa-regular fa-calendar", path: "/appointments" },
     { name: "Update Inventory", icon: "fa-solid fa-boxes-packing", path: "/admin/inventory/update" },
     { name: "Inventory", icon: "fa-solid fa-box", path: "/inventory" },
@@ -102,7 +102,7 @@ const Sidebar = ({ user, onLogout }) => {
 
   const staffMenu = [
     { name: "Staff Dashboard", icon: "fa-solid fa-user-nurse", path: "/staff-dashboard" },
-    { name: "Profile", icon: "fa-regular fa-user", path: "/profile" },
+    { name: "Employee Profile", icon: "fa-regular fa-user", path: "/employee-profile" },
     { name: "Appointments", icon: "fa-regular fa-calendar", path: "/appointments" },
     { name: "Inventory", icon: "fa-solid fa-box", path: "/inventory" },
     { name: "Patients (Pets)", icon: "fa-solid fa-dog", path: "/pets" },
@@ -124,7 +124,7 @@ const Sidebar = ({ user, onLogout }) => {
   } else {
     // fallback: if no recognized role, show a minimal set (you can change or leave empty)
     menuItems = [
-      { name: "Profile", icon: "fa-regular fa-user", path: "/profile" },
+      { name: "employee-profile", icon: "fa-regular fa-user", path: "/employee-profile" },
       { name: "Patients (Pets)", icon: "fa-solid fa-dog", path: "/pets" },
       { name: "Appointments", icon: "fa-regular fa-calendar", path: "/appointments" },
     ];

@@ -170,3 +170,28 @@
   line-height: 1.3;
   letter-spacing: 0.3px;
 }
+
+.password-wrapper {
+  position: relative;
+  width: 100%;
+}
+
+.password-wrapper input {
+  width: 100%;
+  padding-right: 60px; /* เว้นที่ให้ปุ่ม Show */
+}
+
+.toggle-pass {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  cursor: pointer;
+  color: #007bff;
+  font-size: 0.9rem;
+  user-select: none;
+}
+
+.toggle-pass:hover {
+  text-decoration: underline;
+}

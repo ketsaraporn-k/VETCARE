@@ -5,10 +5,22 @@ import "./Auth.css";
 
 export default function Auth({ onLogin }) {
   const [mode, setMode] = useState("login");
-  const [form, setForm] = useState({ username: "", password: "" });
+
+  //  เพิ่มฟิลด์ confirmPassword + name สำหรับสมัคร
+  const [form, setForm] = useState({
+    username: "",
+    password: "",
+    confirmPassword: "", //  เพิ่ม
+    name: "" //  เพิ่ม
+  });
+
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [successMsg, setSuccessMsg] = useState("");
+
+  // ⭐ เพิ่ม state สำหรับ Show / Hide password
+  const [showPassword, setShowPassword] = useState(false);  // ⭐ เพิ่ม
+  const [showConfirm, setShowConfirm] = useState(false);    // ⭐ เพิ่ม
 
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });
@@ -22,13 +34,35 @@ export default function Auth({ onLogin }) {
 
     try {
       if (mode === "register") {
-        await api.post("/api/users/register", form);
+        //  ตรวจสอบว่ารหัสผ่านตรงกันหรือไม่
+        if (form.password !== form.confirmPassword) {
+          setError("Passwords do not match!");
+          setLoading(false);
+          return;
+        }
+
+        //  ส่งข้อมูลเพิ่ม name ไปด้วย
+        await api.post("/api/users/register", {
+          username: form.username,
+          password: form.password,
+          name: form.name
+        });
+
         setSuccessMsg("Account created! Please log in.");
         setMode("login");
-        setForm({ username: "", password: "" });
+
+        //  reset ฟอร์มใหม่ทั้งหมด
+        setForm({
+          username: "",
+          password: "",
+          confirmPassword: "",
+          name: ""
+        });
+
         return;
       }
 
+      // ---------------- LOGIN MODE ----------------
       const res = await api.post("/api/users/login", form);
       const returned = res.data || {};
 
@@ -42,6 +76,7 @@ export default function Auth({ onLogin }) {
 
       localStorage.setItem("user", JSON.stringify(user));
       if (onLogin) onLogin(user);
+
     } catch (err) {
       const msg = err?.response?.data?.error || err.message || "Error occurred";
       setError(msg);
@@ -69,6 +104,20 @@ export default function Auth({ onLogin }) {
         {successMsg && <div className="auth-success">{successMsg}</div>}
 
         <form onSubmit={handleSubmit}>
+
+          {/*  ฟิลด์เฉพาะ Register: Full Name */}
+          {mode === "register" && (
+            <>
+              <label>Full Name</label>
+              <input
+                name="name"
+                value={form.name}
+                onChange={handleChange}
+                required
+              />
+            </>
+          )}
+
           <label>Username</label>
           <input
             name="username"
@@ -77,14 +126,51 @@ export default function Auth({ onLogin }) {
             required
           />
 
+          {/* ⭐ PASSWORD with Show/Hide */}
           <label>Password</label>
-          <input
-            type="password"
-            name="password"
-            value={form.password}
-            onChange={handleChange}
-            required
-          />
+          <div className="password-wrapper">   {/* ⭐ เพิ่ม wrapper */}
+            <input
+              type={showPassword ? "text" : "password"}   // ⭐ เปลี่ยน type
+              name="password"
+              value={form.password}
+              onChange={handleChange}
+              required
+            />
+
+            {/* ⭐ ปุ่มสลับ Show/Hide */}
+            <span
+              className="toggle-pass"
+              onClick={() => setShowPassword(!showPassword)}
+            >
+              <i className={showPassword ? "fa-solid fa-eye-slash" : "fa-solid fa-eye"}></i>
+            </span>
+          </div>
+
+          {/*  ฟิลด์เฉพาะ Register: Confirm Password */}
+          {mode === "register" && (
+            <>
+              <label>Confirm Password</label>
+
+              {/* ⭐ Confirm password with Show/Hide */}
+              <div className="password-wrapper">   {/* ⭐ เพิ่ม wrapper */}
+                <input
+                  type={showConfirm ? "text" : "password"}  // ⭐ เปลี่ยน type
+                  name="confirmPassword"
+                  value={form.confirmPassword}
+                  onChange={handleChange}
+                  required
+                />
+
+                {/* ⭐ ปุ่ม Show/Hide */}
+                <span
+                  className="toggle-pass"
+                  onClick={() => setShowConfirm(!showConfirm)}
+                >
+                  <i className={showConfirm ? "fa-solid fa-eye-slash" : "fa-solid fa-eye"}></i>
+                </span>
+              </div>
+            </>
+          )}
 
           <button type="submit" disabled={loading}>
             {loading ? "Processing..." : mode === "login" ? "Sign In" : "Sign Up"}

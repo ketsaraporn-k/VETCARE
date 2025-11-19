@@ -8,6 +8,7 @@ import Dashboard from "./pages/Dashboard.jsx";
 import Pets from "./pages/OwnerPets.jsx";
 import PetDetail from "./pages/OwnerPetDetail.jsx";
 import Profile from "./pages/OwnerProfile.jsx";
+import EmployeeProfile from "./pages/EmployeeProfile.jsx";
 import Appointments from "./pages/OwnerAppointments.jsx";
 import OwnerDashboard from "./pages/OwnerDashboard.jsx";
 
@@ -133,6 +134,7 @@ function App() {
 
               {/* อื่น ๆ */}
               <Route path="profile" element={<Profile user={user} />} />
+              <Route path="employee-profile" element={<EmployeeProfile user={user} />} />
               <Route path="appointments" element={ isOwner ? (<Appointments user={user} />) : (<StaffAppointments user={user} />)}/>
               <Route path="inventory" element={<Inventory user={user} />} />
               <Route path="cash" element={<CashFlow user={user} />} />
