@@ -54,9 +54,10 @@ const Sidebar = ({ user, onLogout }) => {
     return [];
   };
 
-  const roles = getRolesFromUserProp(user || {});
+   const roles = getRolesFromUserProp(user || {});
 
-  // role-specific menus (only the pages you provided)
+
+ 
   const ownerMenu = [
     { name: "Owner Dashboard", icon: "fa-solid fa-chart-line", path: "/owner" },
     { name: "Owner Profile", icon: "fa-regular fa-user", path: "/profile" },

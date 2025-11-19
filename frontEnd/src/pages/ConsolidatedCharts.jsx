@@ -9,7 +9,7 @@ import {
   CartesianGrid,
   XAxis, YAxis, Tooltip, Legend,
   PieChart, Pie, Cell,
-  Area
+  AreaChart, Area
 } from "recharts";
 
 const COLORS = ["#06b6d4", "#7c3aed", "#ef4444", "#f59e0b", "#10b981", "#60a5fa", "#a78bfa"];
