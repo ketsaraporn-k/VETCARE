@@ -26,12 +26,12 @@
 .btn-view {
   text-decoration: none;
   color: white;
-  background-color: #ff7a00;
+  background-color: #007bff;
   padding: 6px 10px;
   border-radius: 6px;
   transition: 0.2s;
 }
 
 .btn-view:hover {
-  background-color: #e36a00;
+  background-color: #86c0ff;
 }
