@@ -56,19 +56,22 @@ const OwnerDashboard = () => {
 
       {/* การ์ดจำนวนสัตว์เลี้ยง */}
       <div className="owner-card">
-        <h3>🐶 สัตว์เลี้ยงทั้งหมด</h3>
+        <h3> <img src="/kitten.png" className="OwnerDashboard-icon"/>
+          สัตว์เลี้ยงทั้งหมด</h3>
         <p>{pets.length} ตัว</p>
       </div>
 
       {/* การ์ดนัดวันนี้ */}
       <div className="owner-card">
-        <h3>📅 นัดวันนี้</h3>
+        <h3> <img src="/calendar.png" className="OwnerDashboard-icon"/>
+             นัดวันนี้</h3>
         <p>{todayAppointments.length} รายการ</p>
       </div>
 
       {/* นัดถัดไป */}
       <div className="owner-card">
-        <h3>⏭ นัดถัดไป</h3>
+        <h3> <img src="/Next-Apppoint.png" className="OwnerDashboard-icon"/> 
+           นัดถัดไป</h3>
         {upcoming ? (
           <p>
             {upcoming.petName} — {new Date(upcoming.scheduledAt).toLocaleString()}
@@ -80,7 +83,9 @@ const OwnerDashboard = () => {
 
       {/* Welcome message + Notification popup */}
       <div className="owner-section">
-        <h2 className="owner-title">🎉 ยินดีต้อนรับ!</h2>
+        <h2 className="owner-title"> 
+          <img src="/doctor.png" className="OwnerDashboard-icon"/>
+           ยินดีต้อนรับ!🎉</h2>
         <p>ระบบดูแลสัตว์เลี้ยงของคุณ</p>
         <NotificationPopup />
       </div>

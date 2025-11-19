@@ -36,3 +36,14 @@
 .owner-loading {
   padding: 20px;
 }
+
+
+.OwnerDashboard-icon {
+  width: 28px;      /* ปรับขนาดที่ต้องการ เช่น 24px, 30px */
+  height: 28px;     /* ให้เป็นสี่เหลี่ยม */
+  object-fit: contain;
+  margin-right: 8px; /* ระยะห่างระหว่างรูปและข้อความ */
+  vertical-align: middle;
+  filter: drop-shadow(0 1px 2px rgba(0,0,0,0.15));
+  
+}

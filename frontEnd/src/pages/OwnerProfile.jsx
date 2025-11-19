@@ -8,7 +8,7 @@ const OwnerProfile = () => {
   const [isEditing, setIsEditing] = useState(false);
   const [loading, setLoading] = useState(true);
 
-  //  ⭐ โหลดข้อมูลผู้ใช้
+  //   โหลดข้อมูลผู้ใช้
   useEffect(() => {
     const fetchProfile = async () => {
       try {
@@ -43,7 +43,7 @@ const OwnerProfile = () => {
     setProfile({ ...profile, [e.target.name]: e.target.value });
   };
 
-  // ⭐ บันทึกข้อมูล owner
+  //  บันทึกข้อมูล owner
   const handleSave = async () => {
     try {
       const token = localStorage.getItem("token");
@@ -78,7 +78,7 @@ const OwnerProfile = () => {
     }
   };
 
-  // ⭐ อัปโหลดรูปภาพ
+  //  อัปโหลดรูปภาพ
   const handleUpload = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
