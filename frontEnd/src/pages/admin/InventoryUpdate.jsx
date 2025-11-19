@@ -1,12 +1,14 @@
-// src/pages/admin/InventoryUpdate.jsx
+// src/components/InventoryUpdate.jsx
 import React, { useEffect, useState } from "react";
 import api from "../../api/axiosConfig";
 import "./InventoryUpdate.css";
 
 const PAGE_SIZE = 15;
-const LOW_STOCK_THRESHOLD = Number(import.meta.env.VITE_LOW_STOCK_THRESHOLD || 5);
+const DEFAULT_REORDER_QTY = 10;
 
 export default function AdminInventoryUpdate() {
+  const [branches, setBranches] = useState([]);
+  const [selectedBranchId, setSelectedBranchId] = useState("");
   const [items, setItems] = useState([]);
   const [q, setQ] = useState("");
   const [page, setPage] = useState(1);
@@ -20,33 +22,139 @@ export default function AdminInventoryUpdate() {
   const [toast, setToast] = useState(null);
   const [historyItem, setHistoryItem] = useState(null);
 
+  const [showCreate, setShowCreate] = useState(false);
+  const [creating, setCreating] = useState(false);
+  const [newMed, setNewMed] = useState({
+    medicineName: "",
+    sku: "",
+    stock: 0,
+    unit: "pcs",
+    manufacturer: "",
+    category: ""
+  });
+
+  const stored = typeof window !== "undefined" ? localStorage.getItem("user") : null;
+  const currentUser = stored ? JSON.parse(stored) : null;
+  const role = (currentUser?.role || "").toString().toLowerCase();
+  const isSuper = role === "superadmin";
+
+  // Allow doctor to create
+  const canCreate = isSuper || role === "doctor";
+
   useEffect(() => {
-    loadPage(1);
+    if (!isSuper && currentUser?.branchId) {
+      setSelectedBranchId(String(currentUser.branchId));
+    } else if (!isSuper && currentUser?.branch) {
+      setSelectedBranchId(String(currentUser.branch));
+    }
+  }, [currentUser, isSuper]);
+
+  useEffect(() => {
+    (async () => {
+      await loadBranches();
+      await loadPage(1);
+    })();
+    // eslint-disable-next-line
+  }, [selectedBranchId]);
+
+  useEffect(() => {
+    const t = setTimeout(() => loadPage(1), 250);
+    return () => clearTimeout(t);
     // eslint-disable-next-line
   }, [q, sortBy, sortDir, filterLow]);
+
+  const loadBranches = async () => {
+    try {
+      const tryUrls = ["/api/branches", "/branches", "/api/branches/all"];
+      let res = null;
+      for (const u of tryUrls) {
+        try { res = await api.get(u); break; } catch (e) {}
+      }
+      const list = res?.data && Array.isArray(res.data) ? res.data : (Array.isArray(res?.data?.data) ? res.data.data : []);
+      setBranches(list || []);
+      if (!isSuper && currentUser?.branchId) {
+        const found = (list || []).find(b => String(b._id || b.id) === String(currentUser.branchId));
+        if (found) setSelectedBranchId(String(found._id || found.id));
+      }
+      if (!selectedBranchId && (list || []).length) setSelectedBranchId(String(list[0]._id || list[0].id));
+    } catch (err) {
+      console.warn("loadBranches err", err);
+      setBranches([]);
+    }
+  };
 
   const loadPage = async (p = 1) => {
     setLoading(true);
     try {
-      const qs = new URLSearchParams();
-      qs.set("limit", PAGE_SIZE);
-      qs.set("page", p);
-      if (q) qs.set("q", q);
-      if (sortBy) qs.set("sortBy", sortBy);
-      if (sortDir) qs.set("sortDir", sortDir);
-      if (filterLow) qs.set("low", "true");
+      const tryUrls = ["/api/medicines", "/medicines"];
+      let res = null;
+      for (const u of tryUrls) {
+        try { res = await api.get(u); break; } catch (e) {}
+      }
+      if (!res) throw new Error("No medicines endpoint");
 
-      const res = await api.get(`/medicines?${qs.toString()}`);
-      const data = res.data || {};
-      setItems(data.items || data || []);
-      setTotal(data.total ?? (Array.isArray(data) ? data.length : 0));
+      const payload = res.data;
+      let branchList = Array.isArray(payload) ? payload : (payload && payload.branches ? payload.branches : []);
+      if (!Array.isArray(branchList) || branchList.length === 0) {
+        if (payload && payload.medicines && payload.branchName) branchList = [payload];
+        else branchList = [];
+      }
+
+      let branchToShow = null;
+      if (isSuper) {
+        branchToShow = branchList.find(b => String(b._id || b.id) === String(selectedBranchId)) || branchList[0] || null;
+      } else {
+        branchToShow =
+          branchList.find(b => String(b._id || b.id) === String(currentUser?.branchId)) ||
+          branchList.find(b => String(b._id || b.id) === String(currentUser?.branch)) ||
+          branchList.find(b => String(b._id || b.id) === String(selectedBranchId)) ||
+          branchList[0] ||
+          null;
+      }
+
+      const meds = (branchToShow && Array.isArray(branchToShow.medicines)) ? branchToShow.medicines.map(m => ({
+        ...m,
+        _branchId: branchToShow._id || branchToShow.id,
+        branchName: branchToShow.branchName || branchToShow.name || ""
+      })) : [];
+
+      let filtered = meds;
+      if (q && q.trim()) {
+        const qq = q.trim().toLowerCase();
+        filtered = filtered.filter(m =>
+          (m.medicineName || m.name || "").toString().toLowerCase().includes(qq) ||
+          (m.sku || "").toString().toLowerCase().includes(qq) ||
+          (m.manufacturer || "").toString().toLowerCase().includes(qq)
+        );
+      }
+      if (filterLow) {
+        filtered = filtered.filter(m => Number(m.stock || m.quantity || 0) <= (m.lowStockThreshold ?? DEFAULT_REORDER_QTY));
+      }
+
+      filtered.sort((a,b) => {
+        const getKey = (x) => {
+          if (sortBy === "name") return (x.medicineName || x.name || "").toString().toLowerCase();
+          if (sortBy === "quantity") return Number(x.stock ?? x.quantity ?? 0);
+          return new Date(x.updatedAt || x.createdAt || 0).getTime();
+        };
+        const keyA = getKey(a);
+        const keyB = getKey(b);
+        if (sortDir === "asc") return keyA > keyB ? 1 : (keyA < keyB ? -1 : 0);
+        return keyA < keyB ? 1 : (keyA > keyB ? -1 : 0);
+      });
+
+      const totalCount = filtered.length;
+      const start = (p - 1) * PAGE_SIZE;
+      const pageItems = filtered.slice(start, start + PAGE_SIZE);
+
+      setItems(pageItems);
+      setTotal(totalCount);
       setPage(p);
       setSelected(new Set());
     } catch (err) {
       console.error("loadPage err", err);
       setItems([]);
       setTotal(0);
-      setToast({ type: "error", text: "Load failed" });
     } finally {
       setLoading(false);
     }
@@ -59,37 +167,41 @@ export default function AdminInventoryUpdate() {
       return s;
     });
   };
-
-  const selectAllOnPage = () => {
-    setSelected(new Set(items.map(it => it._id)));
-  };
-
+  const selectAllOnPage = () => setSelected(new Set(items.map(it => it._id || it.id)));
   const clearSelection = () => setSelected(new Set());
 
   const inlineUpdate = async (id, payload) => {
-    if (!confirm("Confirm save changes?")) return;
+    if (!window.confirm("ยืนยันการบันทึกการเปลี่ยนแปลง?")) return;
     try {
-      const res = await api.put(`/medicines/${id}`, payload);
-      setItems(prev => prev.map(it => (it._id === id ? (res.data || { ...it, ...payload }) : it)));
-      setToast({ type: "success", text: "Saved" });
+      const med = items.find(it => (it._id || it.id) === id);
+      if (!med) throw new Error("Medicine not found on page");
+      const branchId = med._branchId;
+      const tryUrls = [`/api/medicines/${branchId}/${id}`, `/medicines/${branchId}/${id}`];
+      let res = null;
+      for (const u of tryUrls) {
+        try { res = await api.put(u, payload); break; } catch (e) {}
+      }
+      setToast({ type: "success", text: "บันทึกเรียบร้อย" });
+      await loadPage(page);
     } catch (err) {
       console.error("inlineUpdate err", err);
-      setToast({ type: "error", text: "Save failed" });
+      setToast({ type: "error", text: "บันทึกล้มเหลว" });
     }
   };
 
   const applyBulk = async () => {
-    if (selected.size === 0) return alert("Select items first");
-    if (!confirm(`Apply change ${bulkValue} to ${selected.size} items?`)) return;
+    if (selected.size === 0) return alert("เลือกรายการก่อน");
+    if (!window.confirm(`Apply change ${bulkValue} to ${selected.size} items?`)) return;
     try {
       const ids = Array.from(selected);
-      try {
-        await api.put("/medicines/bulk", { ids, change: Number(bulkValue) });
-      } catch (e) {
-        await Promise.all(ids.map(id => api.put(`/medicines/${id}`, { change: Number(bulkValue) })));
+      for (const id of ids) {
+        const med = items.concat([]).find(it => (it._id || it.id) === id);
+        if (!med) continue;
+        const branchId = med._branchId;
+        await api.put(`/api/medicines/${branchId}/${id}`, { change: Number(bulkValue) }).catch(() => api.put(`/medicines/${branchId}/${id}`, { change: Number(bulkValue) }));
       }
-      setToast({ type: "success", text: "Bulk update applied" });
-      loadPage(page);
+      setToast({ type: "success", text: "Applied" });
+      await loadPage(page);
     } catch (err) {
       console.error("applyBulk err", err);
       setToast({ type: "error", text: "Bulk update failed" });
@@ -97,13 +209,18 @@ export default function AdminInventoryUpdate() {
   };
 
   const deleteSelected = async () => {
-    if (selected.size === 0) return alert("Select items first");
-    if (!confirm(`Delete ${selected.size} medicines? This is permanent.`)) return;
+    if (selected.size === 0) return alert("เลือกรายการก่อน");
+    if (!window.confirm(`ลบ ${selected.size} รายการ?`)) return;
     try {
       const ids = Array.from(selected);
-      await api.post("/medicines/bulk-delete", { ids });
+      for (const id of ids) {
+        const med = items.concat([]).find(it => (it._id || it.id) === id);
+        if (!med) continue;
+        const branchId = med._branchId;
+        await api.delete(`/api/medicines/${branchId}/${id}`).catch(() => api.delete(`/medicines/${branchId}/${id}`));
+      }
       setToast({ type: "success", text: "Deleted" });
-      loadPage(page);
+      await loadPage(page);
     } catch (err) {
       console.error("deleteSelected err", err);
       setToast({ type: "error", text: "Delete failed" });
@@ -112,63 +229,157 @@ export default function AdminInventoryUpdate() {
 
   const openHistory = async (id) => {
     try {
-      const res = await api.get(`/medicines/${id}/history`);
+      const med = items.concat([]).find(it => (it._id || it.id) === id);
+      if (!med) return;
+      const branchId = med._branchId;
+      const res = await api.get(`/api/medicines/${branchId}/${id}/history`).catch(() => api.get(`/medicines/${branchId}/${id}/history`));
       setHistoryItem({ id, data: res.data || [] });
     } catch (err) {
       console.error("openHistory err", err);
-      setToast({ type: "error", text: "Failed to load history" });
+      setToast({ type: "error", text: "Load history failed" });
+    }
+  };
+
+  // CREATE medicine (supports doctor)
+  const doCreateMedicine = async (e) => {
+    e && e.preventDefault();
+    if (!canCreate) return alert("คุณไม่มีสิทธิ์สร้างยา");
+
+    // client-side validation
+    const name = (newMed.medicineName || "").toString().trim();
+    if (!name || name.length < 2) return alert("กรุณากรอกชื่อยาที่ถูกต้อง");
+    const stockNum = Number(newMed.stock || 0);
+    if (Number.isNaN(stockNum) || stockNum < 0) return alert("จำนวนเริ่มต้นต้องเป็นตัวเลข >= 0");
+    const branchId = isSuper ? selectedBranchId : (currentUser?.branchId || currentUser?.branch || selectedBranchId);
+    if (!branchId) return alert("ไม่พบสาขาที่จะเพิ่ม กรุณาเลือกสาขาหรือเช็คข้อมูลผู้ใช้");
+
+    const payload = {
+      medicineName: name,
+      sku: newMed.sku ? String(newMed.sku).trim() : undefined,
+      stock: stockNum,
+      unit: newMed.unit || "pcs",
+      lowStockThreshold: DEFAULT_REORDER_QTY,
+      manufacturer: newMed.manufacturer ? String(newMed.manufacturer).trim() : undefined,
+      category: newMed.category || undefined,
+      branchId,
+    };
+
+    setCreating(true);
+    setToast({ type: "info", text: "กำลังสร้าง..." });
+
+    try {
+      const candidateUrls = ["/api/medicines", "/medicines"];
+      let res = null;
+      for (const url of candidateUrls) {
+        try {
+          res = await api.post(url, payload);
+          if (res && res.status >= 200 && res.status < 300) break;
+        } catch (err) {
+          const status = err?.response?.status;
+          if (status === 401) {
+            setToast({ type: "error", text: "Unauthenticated — กรุณา login ใหม่" });
+            throw err;
+          }
+          // continue trying fallback endpoints
+        }
+      }
+
+      if (!res || !(res.status >= 200 && res.status < 300)) {
+        throw new Error("Create failed (no endpoint responded)");
+      }
+
+      setToast({ type: "success", text: "สร้างยาเรียบร้อย" });
+      setShowCreate(false);
+      setNewMed({ medicineName: "", sku: "", stock: 0, unit: "pcs", manufacturer: "", category: "" });
+      await loadPage(1);
+    } catch (err) {
+      console.error("create medicine err", err);
+      const msg = err?.response?.data?.message || err.message || "Create failed";
+      setToast({ type: "error", text: msg });
+    } finally {
+      setCreating(false);
     }
   };
 
   useEffect(() => {
     if (!toast) return;
-    const t = setTimeout(() => setToast(null), 3000);
+    const t = setTimeout(() => setToast(null), 2800);
     return () => clearTimeout(t);
   }, [toast]);
 
   const totalPages = Math.max(1, Math.ceil((total || items.length || 0) / PAGE_SIZE));
+  const displayBranchName = currentUser?.branchName
+    || (branches.find(b => String(b._id || b.id) === String(selectedBranchId))?.branchName)
+    || (branches.find(b => String(b._id || b.id) === String(currentUser?.branchId))?.branchName)
+    || currentUser?.branch
+    || "-";
 
   return (
     <div className="aiu-page">
       <h2 className="aiu-title">Admin — Inventory Update</h2>
 
       <div className="aiu-controls">
-        <input className="aiu-search" placeholder="Search name or sku" value={q} onChange={e => setQ(e.target.value)} />
+        <div className="aiu-left">
+          <div className="aiu-branch-row">
+            {isSuper ? (
+              <>
+                <label>สาขา:</label>
+                <select value={selectedBranchId} onChange={e => setSelectedBranchId(e.target.value)}>
+                  <option value="">— เลือกสาขา —</option>
+                  {branches.map(b => <option key={b._id || b.id} value={b._id || b.id}>{b.branchName || b.name}</option>)}
+                </select>
+              </>
+            ) : (
+              <div className="aiu-branch-fixed">สาขา: {displayBranchName}</div>
+            )}
+          </div>
 
-        <div className="aiu-filters">
-          <label>
+          <input
+            className="aiu-search"
+            placeholder="ค้นหา ชื่อยา / SKU / ผู้ผลิต ..."
+            value={q}
+            onChange={e => setQ(e.target.value)}
+          />
+        </div>
+
+        <div className="aiu-right">
+          <div className="aiu-sort">
             <select value={sortBy} onChange={e => setSortBy(e.target.value)}>
               <option value="name">Sort: Name</option>
               <option value="quantity">Sort: Quantity</option>
               <option value="updatedAt">Sort: Updated</option>
             </select>
-          </label>
-
-          <label>
             <select value={sortDir} onChange={e => setSortDir(e.target.value)}>
               <option value="asc">Asc</option>
               <option value="desc">Desc</option>
             </select>
-          </label>
 
-          <label className="aiu-low">
-            <input type="checkbox" checked={filterLow} onChange={e => setFilterLow(e.target.checked)} /> Low stock only
-          </label>
-        </div>
-      </div>
+            <label className="aiu-low" title="Show only low stock">
+              <input type="checkbox" checked={filterLow} onChange={e => setFilterLow(e.target.checked)} />
+              <span>Low stock only</span>
+            </label>
+          </div>
 
-      <div className="aiu-actions">
-        <div>
-          <button onClick={selectAllOnPage}>Select page</button>
-          <button onClick={clearSelection}>Clear</button>
-          <span className="aiu-selected">Selected: {selected.size}</span>
-        </div>
+          <div className="aiu-actions">
+            <div className="aiu-select-actions">
+              <button onClick={selectAllOnPage}>Select page</button>
+              <button onClick={clearSelection}>Clear</button>
+              <span className="aiu-selected">Selected: {selected.size}</span>
+            </div>
 
-        <div className="aiu-bulk">
-          <span>Bulk change by</span>
-          <input type="number" value={bulkValue} onChange={e => setBulkValue(e.target.value)} />
-          <button onClick={applyBulk}>Apply</button>
-          <button onClick={deleteSelected} className="aiu-delete">Delete selected</button>
+            <div className="aiu-bulk">
+              <span>Bulk change by</span>
+              <input type="number" value={bulkValue} onChange={e => setBulkValue(e.target.value)} />
+              <button onClick={applyBulk}>Apply</button>
+              <button onClick={deleteSelected} className="aiu-delete">Delete selected</button>
+
+              {canCreate ? (
+                <button className="btn-add" onClick={() => setShowCreate(true)}>+ เพิ่มยา</button>
+              ) : (
+                <button className="btn-add" disabled title="เฉพาะผู้มีสิทธิ์เท่านั้น">+ เพิ่มยา</button>
+              )}
+            </div>
+          </div>
         </div>
       </div>
 
@@ -177,91 +388,73 @@ export default function AdminInventoryUpdate() {
           <thead>
             <tr>
               <th></th>
-              <th>Name</th>
-              <th>Qty</th>
-              <th>Unit</th>
-              <th>Reorder</th>
-              <th>Low?</th>
-              <th>Updated</th>
+              <th>ชื่อ/รหัส</th>
+              <th>จำนวน</th>
+              <th>หน่วย</th>
+              <th>จุดสั่ง</th>
+              <th>สถานะ</th>
               <th>Actions</th>
             </tr>
           </thead>
 
           <tbody>
             {loading ? (
-              <tr><td colSpan={8} className="aiu-loading">Loading...</td></tr>
+              <tr><td colSpan={7} className="aiu-loading">Loading...</td></tr>
             ) : (!items || items.length === 0) ? (
-              <tr><td colSpan={8} className="aiu-empty">No items</td></tr>
+              <tr><td colSpan={7} className="aiu-empty">No items</td></tr>
             ) : (
               items.map(it => {
-                const isLow = (it.quantity != null) && (it.quantity <= (it.reorderQty ?? LOW_STOCK_THRESHOLD));
+                const qty = Number(it.stock ?? it.quantity ?? 0);
+                const isLow = qty <= (it.lowStockThreshold ?? DEFAULT_REORDER_QTY);
                 return (
-                  <tr key={it._id}>
-                    <td><input type="checkbox" checked={selected.has(it._id)} onChange={() => toggleSelect(it._id)} /></td>
+                  <tr key={it._id || it.id}>
+                    <td><input type="checkbox" checked={selected.has(it._id || it.id)} onChange={() => toggleSelect(it._id || it.id)} /></td>
 
                     <td className="aiu-name">
-                      <div className="aiu-name-main">{it.name}</div>
+                      <div className="aiu-name-main">{it.medicineName || it.name || it.sku}</div>
                       <div className="aiu-name-sub">{it.sku || ""}</div>
                     </td>
 
                     <td>
                       <input
                         type="number"
-                        defaultValue={it.quantity ?? 0}
+                        defaultValue={qty}
                         className="aiu-input-num"
                         onBlur={(e) => {
                           const v = Number(e.target.value);
                           if (isNaN(v)) return;
-                          inlineUpdate(it._id, { setQuantity: v });
+                          inlineUpdate(it._id || it.id, { setQuantity: v });
                         }}
                       />
                     </td>
 
                     <td>{it.unit || "-"}</td>
 
-                    <td>
-                      <input
-                        defaultValue={it.reorderQty ?? ""}
-                        placeholder="reorder"
-                        className="aiu-input-small"
-                        onBlur={(e) => {
-                          const v = Number(e.target.value || 0);
-                          inlineUpdate(it._id, { reorderQty: v });
-                        }}
-                      />
-                    </td>
+                    <td>{it.lowStockThreshold ?? DEFAULT_REORDER_QTY}</td>
 
                     <td>{isLow ? <span className="aiu-low-badge">Low</span> : <span className="aiu-ok-badge">OK</span>}</td>
-
-                    <td>{it.updatedAt ? new Date(it.updatedAt).toLocaleString() : "-"}</td>
 
                     <td className="aiu-actions-col">
                       <button onClick={() => {
                         const v = Number(prompt("Adjust by (positive add, negative reduce)", "0"));
                         if (v === null) return;
-                        if (!confirm(`Apply change ${v} to ${it.name}?`)) return;
-                        api.put(`/medicines/${it._id}`, { change: Number(v) }).then(() => loadPage(page)).catch(e => {
-                          console.error(e); setToast({ type: "error", text: "Failed" });
-                        });
-                      }}>Adj</button>
+                        if (!confirm(`Apply change ${v} to ${it.medicineName || it.name}?`)) return;
+                        inlineUpdate(it._id || it.id, { change: Number(v) });
+                      }}>+/-</button>
 
-                      <button onClick={() => openHistory(it._id)}>History</button>
+                      <button onClick={() => openHistory(it._id || it.id)}>History</button>
 
-                      <button onClick={() => {
-                        if (!confirm("Mark low-stock alert resolved?")) return;
-                        api.put(`/medicines/${it._id}`, { lowStockAlert: false }).then(() => loadPage(page)).catch(e => {
-                          console.error(e); setToast({ type: "error", text: "Failed" });
-                        });
-                      }}>Resolve</button>
+                      <button disabled title="Restock fixed" className="aiu-disabled">Set Restock</button>
 
                       <button onClick={async () => {
                         if (!confirm("Delete this medicine?")) return;
                         try {
-                          await api.delete(`/medicines/${it._id}`);
+                          await api.delete(`/api/medicines/${it._branchId}/${(it._id || it.id)}`).catch(() => api.delete(`/medicines/${it._branchId}/${(it._id || it.id)}`));
                           setToast({ type: "success", text: "Deleted" });
-                          loadPage(page);
+                          await loadPage(page);
                         } catch (err) {
-                          console.error(err); setToast({ type: "error", text: "Delete failed" });
+                          console.error(err);
+                          setToast({ type: "error", text: "Delete failed" });
                         }
                       }} className="aiu-delete">Delete</button>
                     </td>
@@ -289,7 +482,7 @@ export default function AdminInventoryUpdate() {
               <ul>
                 {historyItem.data.map((h, idx) => (
                   <li key={idx}>
-                    <strong>{h.action}</strong> — by {h.byName || h.by || h.byId} at {new Date(h.at).toLocaleString()}
+                    <strong>{h.action}</strong> — by {h.byName || h.by || h.byId} at {h.at ? new Date(h.at).toLocaleString() : '-'}
                     {h.note ? <div style={{ marginLeft: 8 }}>{h.note}</div> : null}
                   </li>
                 ))}
@@ -299,6 +492,60 @@ export default function AdminInventoryUpdate() {
               <button onClick={() => setHistoryItem(null)}>Close</button>
             </div>
           </div>
+        </div>
+      )}
+
+      {showCreate && (
+        <div className="aiu-modal-backdrop" onClick={() => setShowCreate(false)}>
+          <form className="aiu-modal" onClick={(e) => e.stopPropagation()} onSubmit={doCreateMedicine}>
+            <h3>เพิ่มยาใหม่</h3>
+
+            {isSuper ? (
+              <>
+                <label>สาขา (สำหรับการสร้าง)</label>
+                <select value={selectedBranchId} onChange={e => setSelectedBranchId(e.target.value)} required>
+                  <option value="">— เลือกสาขา —</option>
+                  {branches.map(b => <option key={b._id || b.id} value={b._id || b.id}>{b.branchName || b.name}</option>)}
+                </select>
+              </>
+            ) : (
+              <div style={{ marginBottom: 8 }}>สาขา: {displayBranchName}</div>
+            )}
+
+            <label>ชื่อยา</label>
+            <input value={newMed.medicineName} required onChange={e => setNewMed(prev => ({ ...prev, medicineName: e.target.value }))} />
+
+            <label>รหัส (SKU)</label>
+            <input value={newMed.sku} onChange={e => setNewMed(prev => ({ ...prev, sku: e.target.value }))} />
+
+            <label>จำนวนเริ่มต้น</label>
+            <input type="number" value={newMed.stock} onChange={e => setNewMed(prev => ({ ...prev, stock: e.target.value }))} />
+
+            <label>หน่วย</label>
+            <select value={newMed.unit} onChange={e => setNewMed(prev => ({ ...prev, unit: e.target.value }))}>
+              <option value="pcs">pcs</option>
+              <option value="box">box</option>
+              <option value="bottle">bottle</option>
+              <option value="ml">ml</option>
+            </select>
+
+            <label>ผู้ผลิต</label>
+            <input value={newMed.manufacturer} onChange={e => setNewMed(prev => ({ ...prev, manufacturer: e.target.value }))} />
+
+            <label>หมวดหมู่</label>
+            <select value={newMed.category} onChange={e => setNewMed(prev => ({ ...prev, category: e.target.value }))}>
+              <option value="">— none —</option>
+              <option value="antibiotic">Antibiotic</option>
+              <option value="vaccine">Vaccine</option>
+              <option value="supplement">Supplement</option>
+              <option value="other">Other</option>
+            </select>
+
+            <div style={{ marginTop: 12, display: "flex", gap: 8 }}>
+              <button type="button" onClick={() => setShowCreate(false)} className="btn ghost">ปิด</button>
+              <button type="submit" className="btn" disabled={creating}>{creating ? "กำลังสร้าง..." : "สร้าง"}</button>
+            </div>
+          </form>
         </div>
       )}
 

@@ -14,13 +14,11 @@ import OwnerDashboard from "./pages/OwnerDashboard.jsx";
 
 import Auth from "./components/Auth";
 //Staff/Admin/SuperAdmin 
-// import StaffDashboard from "./pages/StaffDashboard";
 import StaffPets from "./pages/Pets.jsx";
 import StaffPetDetail from "./pages/PetDetail.jsx";
 import StaffAppointments from "./pages/StaffAppointments.jsx"; 
 import Inventory from "./pages/Inventory";
 import CashFlow from "./pages/CashFlow";
-import ConsolidatedView from "./pages/ConsolidatedView";
 import StaffDashboard from "./pages/StaffDashboard";
 
 // Admin pages
@@ -29,7 +27,6 @@ import AdminAlerts from "./pages/admin/Alerts";
 import AdminInventoryUpdate from "./pages/admin/InventoryUpdate";
 import MoveRequest from "./pages/admin/MoveRequest";
 import MoveRequestsList from "./pages/admin/MoveRequestsList";
-import MoveRequestHistory from "./pages/admin/MoveRequestHistory";
 import BranchSummary from "./pages/BranchSummary";
 
 // superAdmin pages
@@ -37,6 +34,7 @@ import UserRoleManage from "./pages/superAdmin/UserRoleManage.jsx";
 import BranchManage from "./pages/superAdmin/BranchManage";
 import BranchTransfer from "./pages/superAdmin/BranchTransfer";
 import SuperAdmin from "./pages/superAdmin/SuperAdmin";
+import ConsolidatedCharts from "./pages/ConsolidatedCharts.jsx";
 
 // Layout
 import MainLayout from "./layout/MainLayout";
@@ -138,14 +136,12 @@ function App() {
               <Route path="appointments" element={ isOwner ? (<Appointments user={user} />) : (<StaffAppointments user={user} />)}/>
               <Route path="inventory" element={<Inventory user={user} />} />
               <Route path="cash" element={<CashFlow user={user} />} />
-              <Route path="/consolidated" element={<ConsolidatedView />} />
               <Route path="/staff-dashboard" element={<StaffDashboard />} />
 
               {/* admin area */}
               <Route path="admin/dashboard" element={<AdminDashboard user={user} />} />
               <Route path="admin/alerts" element={<AdminAlerts user={user} />} />
               <Route path="admin/inventory/update" element={<AdminInventoryUpdate user={user} />} />
-              <Route path="branches/history" element={<MoveRequestHistory user={user} />} />
               <Route path="/branch-summary" element={<BranchSummary />} />
 
               {/* superadmin area */}
@@ -155,6 +151,7 @@ function App() {
               <Route path="branches/transfer-request" element={<MoveRequest user={user} />} />
               <Route path="branches/move-requests" element={<MoveRequestsList user={user} />} />
               <Route path="branches/transfer" element={<BranchTransfer user={user} />} />
+              <Route path="consolidated" element={<ConsolidatedCharts user={user} />} />
             </Route>
 
             <Route path="/login" element={<Navigate to="/" replace />} />

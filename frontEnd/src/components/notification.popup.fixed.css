@@ -1,0 +1,246 @@
+/* root container: ensure it is clickable and above sidebars */
+.np-root-fixed {
+  position: fixed;
+  top: 18px;
+  right: 20px;
+  z-index: 14000; /* high to be above sidebar */
+  font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+  pointer-events: auto;
+}
+
+/* bell button */
+.np-bell {
+  pointer-events: auto;
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
+  background: #ffffff;
+  border: 1px solid rgba(2, 6, 23, 0.05);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  padding: 6px;
+  position: relative;
+  transition: transform 0.12s ease, box-shadow 0.12s ease, background 0.12s;
+  box-shadow: 0 6px 18px rgba(2, 6, 23, 0.06);
+  z-index: 14010;
+}
+.np-bell.open {
+  background: #f8fafc;
+}
+.np-bell:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 30px rgba(2, 6, 23, 0.08);
+}
+
+/* unread dot (decorative) */
+.np-dot {
+  pointer-events: none;
+  display: inline-block;
+  background: #ff6a00;
+  color: #fff;
+  border-radius: 999px;
+  padding: 2px 6px;
+  font-size: 12px;
+  margin-left: 6px;
+}
+
+/* panel */
+.np-panel-fixed {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  width: 360px;
+  max-width: min(360px, calc(100vw - 40px));
+  max-height: calc(100vh - 120px);
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 18px 60px rgba(2, 6, 23, 0.18);
+  transform-origin: top right;
+  transform: translateY(-6px) scale(0.98);
+  opacity: 0;
+  pointer-events: none;
+  transition: transform 0.14s ease, opacity 0.14s ease;
+  overflow: hidden;
+  display: none;
+  flex-direction: column;
+  z-index: 13990;
+}
+
+/* visible */
+.np-panel-fixed.show {
+  display: flex;
+  transform: translateY(6px) scale(1);
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* header */
+.np-header-fixed {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 14px;
+  border-bottom: 1px solid #f3f4f6;
+}
+.np-title-fixed {
+  font-weight: 700;
+  color: #0f172a;
+  font-size: 15px;
+}
+.np-sub-fixed {
+  color: #6b7280;
+  margin-left: 8px;
+  font-size: 12px;
+  font-weight: 600;
+}
+.np-actions-fixed {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.np-small-fixed {
+  padding: 6px 8px;
+  border-radius: 8px;
+  border: 1px solid #e6e8eb;
+  background: #fff;
+  cursor: pointer;
+  font-size: 13px;
+  pointer-events: auto;
+}
+.np-close-fixed {
+  border: none;
+  background: transparent;
+  font-size: 16px;
+  color: #374151;
+  cursor: pointer;
+  pointer-events: auto;
+}
+
+/* list */
+.np-list-fixed {
+  overflow-y: auto;
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.np-empty {
+  padding: 18px;
+  text-align: center;
+  color: #6b7280;
+}
+
+/* item */
+.np-item-fixed {
+  display: flex;
+  gap: 10px;
+  padding: 10px;
+  border-radius: 10px;
+  cursor: pointer;
+  align-items: flex-start;
+  transition: background 0.08s ease;
+  pointer-events: auto;
+}
+.np-item-fixed:hover {
+  background: #fbfdff;
+}
+.np-item-fixed.unread {
+  background: #fff7f0;
+  border-left: 3px solid #fb923c;
+}
+.np-item-ico-fixed {
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #f3f4f6;
+  color: #374151;
+  font-weight: 700;
+  font-size: 14px;
+}
+.np-item-body-fixed {
+  flex: 1;
+  min-width: 0;
+}
+.np-msg-fixed {
+  font-size: 14px;
+  font-weight: 600;
+  color: #0f172a;
+  overflow-wrap: anywhere;
+}
+.np-meta-fixed {
+  font-size: 12px;
+  color: #6b7280;
+  margin-top: 6px;
+}
+
+/* footer */
+.np-footer-fixed {
+  padding: 8px 12px;
+  border-top: 1px solid #f3f4f6;
+  text-align: center;
+}
+.np-note-fixed {
+  color: #6b7280;
+  font-size: 12px;
+}
+
+/* small responsive tweak */
+@media (max-width: 420px) {
+  .np-panel-fixed {
+    right: 8px;
+    width: calc(100vw - 32px);
+  }
+}
+
+/* badge: place at top-right corner of bell */
+.np-bell {
+  position: relative; /* ensure absolute badge positions relative to bell */
+}
+
+.np-dot {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  transform-origin: center;
+  display: inline-block;
+  background: #ff6a00;
+  color: #fff;
+  border-radius: 999px;
+  padding: 2px 6px;
+  font-size: 12px;
+  line-height: 1;
+  box-shadow: 0 6px 12px rgba(0,0,0,0.12);
+  pointer-events: none;
+}
+
+/* subtle bounce animation to attract attention; only when unread exists (class np-dot-bounce) */
+@keyframes np-bounce {
+  0% { transform: translateY(0) scale(1); }
+  20% { transform: translateY(-4px) scale(1.05); }
+  40% { transform: translateY(0) scale(0.98); }
+  60% { transform: translateY(-2px) scale(1.02); }
+  100% { transform: translateY(0) scale(1); }
+}
+.np-dot-bounce {
+  animation: np-bounce 900ms ease-in-out infinite;
+}
+
+/* when panel is open, stop bounce to avoid distraction */
+.np-panel-fixed.show ~ .np-bell .np-dot-bounce,
+.np-bell.open .np-dot-bounce {
+  animation: none;
+}
+
+/* ensure on small screens the badge stays visible */
+@media (max-width: 420px) {
+  .np-dot { right: -8px; top: -8px; font-size: 11px; padding: 2px 5px; }
+}
