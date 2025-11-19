@@ -8,3 +8,6 @@ frontend/node_modules/
 # ไม่อัปโหลดไฟล์ชั่วคราวหรือระบบ
 *.log
 .DS_Store
+
+dist/
+build/
