@@ -1,23 +1,51 @@
 # VETCAER (VeterinaryClinic ManagementSystem)
 🐾 VetCare — Veterinary Clinic Management System
 Full-Stack Web Application | React + Express + MongoDB
+CSI400 Project 
 
-CSI400 • Senior Project
+VetCare คือ ระบบจัดการคลินิกสัตวแพทย์ ครบวงจรสำหรับ เจ้าของสัตว์เลี้ยง, สัตวแพทย์, พนักงาน และผู้ดูแลสาขา
 
-📌 Overview
+📌 Features
 
-VetCare คือระบบบริหารจัดการคลินิกสัตวแพทย์ ประกอบด้วย:
+👩‍⚕️ สำหรับสัตวแพทย์ / พนักงาน
 
-👨‍⚕ เจ้าหน้าที่ / แพทย์จัดการข้อมูลสัตว์เลี้ยง
+จัดการนัดหมาย (Appointments)
 
-🐶 เจ้าของสัตว์เลี้ยงดูข้อมูลสัตว์เลี้ยงของตนเอง
+บันทึกประวัติการรักษา
 
-📅 ระบบนัดหมาย ตรวจรักษา รายงานสถิติ
+ระบบยา (Medicines / Inventory)
 
-📦 ระบบคลังยา / Inventory
+ระบบแจ้งเตือนแบบ Real-time (Socket.io)
 
-🏥 ระบบจัดการหลายสาขา
+🧑‍💼 สำหรับเจ้าของสัตว์เลี้ยง (Pet Owner)
 
-🔐 รองรับ JWT Authentication + Cookie Session
+จัดการข้อมูลสัตว์เลี้ยง
 
-💬 Real-time Notification (Socket.IO)
+ดูประวัติการรักษา
+
+ดูนัดหมาย
+
+🏢 สำหรับผู้ดูแล (Admin / Branch Admin)
+
+จัดการผู้ใช้งาน
+
+จัดการคลินิกสาขา
+
+รายงานสถิติประจำวัน
+
+🛠 Tech Stack
+Frontend
+
+React + Vite
+
+Axios
+
+React Router
+
+Backend
+
+Node.js + Express
+
+MongoDB + Mongoose
+
+JWT Authentication
