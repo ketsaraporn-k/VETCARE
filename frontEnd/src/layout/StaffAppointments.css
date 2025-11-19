@@ -310,7 +310,7 @@
 .appt-page .appointments-table th,
 .appt-page .appointments-table td {
   padding: 6px 8px;
-  text-align: left;
+  text-align: center;
   border-bottom: 1px solid #e5e7eb;
 }
 
@@ -333,7 +333,7 @@
 /* ---------- STATUS BADGES ---------- */
 
 .appt-page .status-badge {
-  display: inline-flex;
+  display: inline-flexbox;
   align-items: center;
   padding: 2px 8px;
   border-radius: 999px;
@@ -619,5 +619,86 @@
   display: flex;
   align-items: center;
   gap: 6px;
+}
+
+/* ==== Manage cell (status + buttons) ==== */
+.appt-manage-cell {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.5rem;           /* ระยะห่างระหว่าง select กับปุ่ม */
+  min-width: 280px;      /* ให้คอลัมน์นี้กว้างขึ้นหน่อย */
+}
+
+/* dropdown สถานะ */
+.appt-status-select {
+  padding: 6px 14px;
+  border-radius: 999px;
+  border: 1px solid #d0d7e2;
+  background-color: #ffffff;
+  font-size: 0.85rem;
+  outline: none;
+  cursor: pointer;
+  appearance: none;
+}
+
+/* ปุ่มในคอล Manage */
+.appt-status-btn {
+  border-radius: 999px;
+  border: 1px solid #d0d7e2;
+  background: #f5f7fb;
+  padding: 6px 14px;
+  font-size: 0.85rem;
+  line-height: 1;
+  cursor: pointer;
+  transition: background 0.15s ease, transform 0.08s ease,
+    box-shadow 0.15s ease, border-color 0.15s ease;
+  white-space: nowrap;
+}
+
+.appt-status-btn:hover {
+  background: #e7ecfb;
+  border-color: #c0c9f0;
+  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.06);
+  transform: translateY(-1px);
+}
+
+.appt-status-btn:active {
+  transform: translateY(0);
+  box-shadow: none;
+}
+
+/* ปุ่ม Edit เน้นขึ้นนิดหน่อย */
+.appt-status-edit {
+  background: #eef4ff;
+  border-color: #c0d0ff;
+}
+
+/* ปุ่ม Delete เป็นโทนแดงอ่อน */
+.appt-status-danger {
+  background: #fff1f2;
+  border-color: #fecdd3;
+  color: #b91c1c;
+}
+
+.appt-status-danger:hover {
+  background: #ffe4e6;
+  border-color: #fda4af;
+}
+
+/* ให้เซลล์ status badge กลางสวย ๆ */
+.appointments-table td:nth-child(4) .status-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 80px;
+}
+
+.appointments-table tr {
+  border-bottom: 1px solid #edf1f7;
+}
+
+.appointments-table tbody tr:hover {
+  background: #f8fafc;
 }
 

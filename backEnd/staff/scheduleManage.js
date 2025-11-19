@@ -1,4 +1,3 @@
-/* staff/scheduleManage.js */
 const express = require("express");
 const mongoose = require("mongoose");
 const auth = require("../middleware/auth");
@@ -81,7 +80,7 @@ function hasDoctorConflict(branchSchedules, doctorId, start, end, excludeId = nu
 router.post(
   "/schedules",
   auth,
-  role(["staff", "branchAdmin", "doctor", "superAdmin"]),
+  role(["staff", "branchAdmin", "doctor"]),
   async (req, res) => {
     try {
       const {
@@ -112,7 +111,7 @@ router.post(
       const branch = await Branch.findById(branchId);
       if (!branch) return res.status(404).json({ error: "Branch not found" });
 
-      // ====== เตรียมเวลาเริ่ม–เลิก + หมอ ======
+      //เวลาเริ่ม–เลิก + หมอ 
       const start = new Date(scheduledAt);
       if (isNaN(start.getTime())) {
         return res.status(400).json({ error: "scheduledAt invalid" });
@@ -133,7 +132,7 @@ router.post(
       const effectiveDoctorId =
         bodyDoctorId || (roleNow === "doctor" ? me : null);
 
-      // ====== เช็กชนตารางหมอ ถ้าเลือกหมอแล้ว ======
+      // เช็กเวลาไม่ให้ชนกับนัดอื่นของหมอ
       if (effectiveDoctorId) {
         const conflict = hasDoctorConflict(
           branch.schedules,
@@ -204,7 +203,7 @@ router.get(
           (a, b) => new Date(a.scheduledAt) - new Date(b.scheduledAt)
         );
 
-        // ⭐ หมอเห็นเฉพาะนัดของตัวเอง
+        // หมอเห็นเฉพาะนัดของตัวเอง
         rows = filterForDoctor(req, rows);
 
         return res.json({
@@ -305,7 +304,7 @@ router.get(
         (a, b) => new Date(a.scheduledAt) - new Date(b.scheduledAt)
       );
 
-      // ⭐ หมอเห็นเฉพาะนัดของตัวเอง
+      //หมอเห็นเฉพาะนัดของตัวเอง
       rows = filterForDoctor(req, rows);
 
       res.json(rows);
@@ -351,7 +350,7 @@ router.get(
           .json({ message: "ยังไม่มีการนัดสำหรับสัตว์ตัวนี้" });
       }
 
-      // ⭐ ถ้าเป็นหมอ ให้เห็นเฉพาะนัดของตัวเอง
+      // ถ้าเป็นหมอ ให้เห็นเฉพาะนัดของตัวเอง
       rows = filterForDoctor(req, rows);
 
       rows = rows.sort(
@@ -390,7 +389,7 @@ router.put(
       const sched = branch.schedules.id(id);
       if (!sched) return res.status(404).json({ error: "Schedule not found" });
 
-      // ===== เตรียมค่าใหม่ไว้เช็กชนก่อน =====
+      //เตรียมค่าใหม่ไว้เช็กชนก่อน
       let newStart = sched.scheduledAt ? new Date(sched.scheduledAt) : null;
       if (req.body.scheduledAt) {
         const d = new Date(req.body.scheduledAt);
@@ -435,7 +434,7 @@ router.put(
         }
       }
 
-      // ===== ผ่านแล้วค่อยอัปเดตจริง =====
+      // ผ่านแล้วค่อยอัปเดตจริง 
       sched.scheduledAt = newStart;
       sched.durationMinutes = newDuration;
       sched.endAt = newEnd;
@@ -494,5 +493,44 @@ router.put(
     }
   }
 );
+
+// ---------------------- DELETE (appointment) ----------------------
+// DELETE /staff/schedules/:branchId/:id
+router.delete(
+  "/schedules/:branchId/:id",
+  auth,
+  role(["branchAdmin"]),
+  async (req, res) => {
+    try {
+      const { branchId, id } = req.params;
+      if (!isOid(branchId) || !isOid(id)) {
+        return res.status(400).json({ error: "Invalid id(s)" });
+      }
+
+      const branchCheck = assertBranch(req, branchId);
+      if (!branchCheck.ok) {
+        return res.status(403).json({ error: branchCheck.error });
+      }
+
+      const branch = await Branch.findById(branchId);
+      if (!branch) return res.status(404).json({ error: "Branch not found" });
+
+      const sched = branch.schedules.id(id);
+      if (!sched) return res.status(404).json({ error: "Schedule not found" });
+
+      
+      await sched.deleteOne();          
+      
+
+      await branch.save();
+
+      res.json({ message: "ลบนัดหมายสำเร็จ" });
+    } catch (err) {
+      console.error("delete schedule err", err);
+      res.status(500).json({ error: "SERVER_ERROR" });
+    }
+  }
+);
+
 
 module.exports = router;

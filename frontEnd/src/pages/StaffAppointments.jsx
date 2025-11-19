@@ -98,6 +98,7 @@ const StaffAppointments = ({ user }) => {
 
   const [showModal, setShowModal] = useState(false);
   const [editingAppt, setEditingAppt] = useState(null);
+  const [viewAppt, setViewAppt] = useState(null);
 
   const [form, setForm] = useState({
     petId: "",
@@ -117,6 +118,7 @@ const StaffAppointments = ({ user }) => {
   const role = useMemo(() => String(user?.role || "").toLowerCase(), [user]);
   const isSuper = role === "superadmin";
   const isDoctor = role === "doctor";
+  const isBranchAdmin = role === "branchadmin";
 
   const todayKey = toKey(new Date());
 
@@ -164,7 +166,7 @@ const StaffAppointments = ({ user }) => {
       const data = res.data?.data || res.data || [];
       let rows = Array.isArray(data) ? data : [];
 
-      // เผื่อ backend ยังไม่ filter หมอ
+      // doctor เห็นเฉพาะนัดของตัวเอง (กัน backend ยังไม่ filter)
       if (!isSuper && isDoctor) {
         const uid = String(user?.id || user?._id || "");
         rows = rows.filter((a) => {
@@ -421,6 +423,20 @@ const StaffAppointments = ({ user }) => {
     setIsPetOpen(false);
   };
 
+  const getPetLabel = (appt) => {
+    const petId = appt.petId || appt.pet?._id || appt.pet?.id;
+    if (!petId) return "-";
+    const p = pets.find((x) => String(x.id) === String(petId));
+    return p ? p.name : "-";
+  };
+
+  const getDoctorLabel = (appt) => {
+    const docId = appt.doctorId || appt.staffId;
+    if (!docId) return "-";
+    const d = doctors.find((x) => String(x.id) === String(docId));
+    return d ? d.name : "-";
+  };
+
   /* ===== Modal: add appointment ===== */
   const openModal = () => {
     if (!user?.branchId && !isSuper) {
@@ -537,7 +553,7 @@ const StaffAppointments = ({ user }) => {
       setShowModal(false);
       setEditingAppt(null);
     } catch (err) {
-      console.error("create/update schedule err:", err);
+      console.error("create/update schedule err", err);
       alert(err.response?.data?.error || "บันทึกนัดไม่สำเร็จ");
     }
   };
@@ -561,6 +577,28 @@ const StaffAppointments = ({ user }) => {
     } catch (err) {
       console.error("update status err:", err);
       alert(err.response?.data?.error || "เปลี่ยนสถานะไม่สำเร็จ");
+    }
+  };
+
+  /* ===== Delete (branchAdmin / super) ===== */
+  const deleteAppointment = async (row) => {
+    if (!window.confirm("ต้องการลบนัดหมายนี้หรือไม่?")) return;
+
+    try {
+      const branchId = isSuper
+        ? row.branch?.id || row.branchId
+        : user.branchId;
+
+      if (!branchId) {
+        alert("ไม่พบ branchId ของนัดหมายนี้");
+        return;
+      }
+
+      await api.delete(`/api/staff/schedules/${branchId}/${row._id}`);
+      await fetchAppointments();
+    } catch (err) {
+      console.error("delete schedule err", err);
+      alert(err.response?.data?.error || "ลบนัดหมายไม่สำเร็จ");
     }
   };
 
@@ -719,18 +757,18 @@ const StaffAppointments = ({ user }) => {
                 <thead>
                   <tr>
                     <th>Time</th>
-                    <th>Service</th>
+                    <th>Pet</th>
+                    <th>Doctor</th>
                     <th>Status</th>
-                    {isSuper && <th>Branch</th>}
-                    <th>Notes</th>
-                    {!isSuper && <th>Manage</th>}
+                    {isSuper ? <th>Branch</th> : <th>Manage</th>}
                   </tr>
                 </thead>
                 <tbody>
                   {dayAppointments.map((a) => (
                     <tr key={a._id}>
                       <td>{formatDateTime(a.scheduledAt)}</td>
-                      <td>{a.serviceType || "-"}</td>
+                      <td>{getPetLabel(a)}</td>
+                      <td>{getDoctorLabel(a)}</td>
                       <td
                         className={`status-badge status-${
                           a.status || "pending"
@@ -738,11 +776,12 @@ const StaffAppointments = ({ user }) => {
                       >
                         {a.status || "pending"}
                       </td>
-                      {isSuper && (
-                        <td>{a.branch?.branchName || a.branchName || "-"}</td>
-                      )}
-                      <td>{a.notes || "-"}</td>
-                      {!isSuper && (
+
+                      {isSuper ? (
+                        <td>
+                          {a.branch?.branchName || a.branchName || "-"}
+                        </td>
+                      ) : (
                         <td className="appt-manage-cell">
                           <select
                             className="appt-status-select"
@@ -752,9 +791,18 @@ const StaffAppointments = ({ user }) => {
                             }
                           >
                             <option value="pending">Pending</option>
+                            <option value="confirmed">Confirmed</option>
                             <option value="done">Done</option>
                             <option value="cancelled">Cancelled</option>
                           </select>
+
+                          <button
+                            type="button"
+                            className="appt-status-btn"
+                            onClick={() => setViewAppt(a)}
+                          >
+                            View
+                          </button>
 
                           <button
                             type="button"
@@ -763,6 +811,16 @@ const StaffAppointments = ({ user }) => {
                           >
                             Edit
                           </button>
+
+                          {isBranchAdmin && (
+                            <button
+                              type="button"
+                              className="appt-status-btn appt-status-danger"
+                              onClick={() => deleteAppointment(a)}
+                            >
+                              Delete
+                            </button>
+                          )}
                         </td>
                       )}
                     </tr>
@@ -774,7 +832,61 @@ const StaffAppointments = ({ user }) => {
         </div>
       </div>
 
-      {/* Modal */}
+      {/* View Modal */}
+      {viewAppt && (
+        <div
+          className="petdetail-modal-overlay"
+          onClick={() => setViewAppt(null)}
+        >
+          <div
+            className="petdetail-modal"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="modal-title">Appointment Detail</h3>
+            <div className="modal-view-content">
+              <p>
+                <strong>Date / Time:</strong>{" "}
+                {formatDateLabel(viewAppt.scheduledAt)}{" "}
+                {formatDateTime(viewAppt.scheduledAt)}
+              </p>
+              <p>
+                <strong>Pet:</strong> {getPetLabel(viewAppt)}
+              </p>
+              <p>
+                <strong>Doctor:</strong> {getDoctorLabel(viewAppt)}
+              </p>
+              <p>
+                <strong>Service:</strong> {viewAppt.serviceType || "-"}
+              </p>
+              <p>
+                <strong>Status:</strong> {viewAppt.status || "pending"}
+              </p>
+              <p>
+                <strong>Notes:</strong> {viewAppt.notes || "-"}
+              </p>
+              {isSuper && (
+                <p>
+                  <strong>Branch:</strong>{" "}
+                  {viewAppt.branch?.branchName ||
+                    viewAppt.branchName ||
+                    "-"}
+                </p>
+              )}
+            </div>
+            <div className="modal-actions">
+              <button
+                type="button"
+                className="btn-secondary"
+                onClick={() => setViewAppt(null)}
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Add / Edit Modal */}
       {showModal && (
         <div className="petdetail-modal-overlay" onClick={closeModal}>
           <div
