@@ -4,42 +4,46 @@ import api from "../api/axiosConfig";
 import "./Auth.css";
 
 export default function Auth({ onLogin }) {
-  const [username, setUsername] = useState("");
-  const [password, setPassword] = useState("");
+  const [mode, setMode] = useState("login");
+  const [form, setForm] = useState({ username: "", password: "" });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [successMsg, setSuccessMsg] = useState("");
+
+  const handleChange = (e) => {
+    setForm({ ...form, [e.target.name]: e.target.value });
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
     setError(null);
+    setSuccessMsg("");
 
     try {
-      // 1) send credentials. Backend may return { user } or { token, user } or set httpOnly cookie
-      const res = await api.post("/api/users/login", { username, password });
-
-      // backend might return sanitized user (cookie-based) or token+user
-      const returned = res.data || {};
-      if (returned.token) {
-        try { localStorage.setItem("token", returned.token); } catch {}
+      if (mode === "register") {
+        await api.post("/api/users/register", form);
+        setSuccessMsg("Account created! Please log in.");
+        setMode("login");
+        setForm({ username: "", password: "" });
+        return;
       }
 
-      // If backend returned user, use it; else fetch profile
+      const res = await api.post("/api/users/login", form);
+      const returned = res.data || {};
+
+      if (returned.token) localStorage.setItem("token", returned.token);
+
       let user = returned.user || null;
       if (!user) {
-        // try to fetch profile (cookie or bearer token)
         const prof = await api.get("/api/users/profile");
         user = prof.data;
       }
 
-      if (!user) throw new Error("Login succeeded but no user returned");
-
-      // persist user and call parent
-      try { localStorage.setItem("user", JSON.stringify(user)); } catch {}
+      localStorage.setItem("user", JSON.stringify(user));
       if (onLogin) onLogin(user);
     } catch (err) {
-      console.error("login err", err);
-      const msg = err?.response?.data?.error || err.message || "Login failed";
+      const msg = err?.response?.data?.error || err.message || "Error occurred";
       setError(msg);
     } finally {
       setLoading(false);
@@ -47,32 +51,60 @@ export default function Auth({ onLogin }) {
   };
 
   return (
-    <div className="auth-container">
-      <form onSubmit={handleSubmit} className="auth-form">
-        <h2>Sign in</h2>
+    <div className="auth-page">
+      <div className="auth-card">
+
+        {/* Branding Header */}
+        <div className="brand">
+          <img src="/clinic.png" alt="Vetcare Logo" className="brand-logo" />
+          <div className="brand-text">
+            <h1>VETCARE</h1>
+            <p>Veterinary Clinic Management System</p>
+          </div>
+        </div>
+
+        <h2>{mode === "login" ? "Sign In" : "Create Account"}</h2>
+
         {error && <div className="auth-error">{error}</div>}
+        {successMsg && <div className="auth-success">{successMsg}</div>}
 
-        <label>Username</label>
-        <input
-          value={username}
-          onChange={(e) => setUsername(e.target.value)}
-          required
-          autoComplete="username"
-        />
+        <form onSubmit={handleSubmit}>
+          <label>Username</label>
+          <input
+            name="username"
+            value={form.username}
+            onChange={handleChange}
+            required
+          />
 
-        <label>Password</label>
-        <input
-          type="password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          required
-          autoComplete="current-password"
-        />
+          <label>Password</label>
+          <input
+            type="password"
+            name="password"
+            value={form.password}
+            onChange={handleChange}
+            required
+          />
 
-        <button type="submit" disabled={loading}>
-          {loading ? "Signing in..." : "Sign in"}
-        </button>
-      </form>
+          <button type="submit" disabled={loading}>
+            {loading ? "Processing..." : mode === "login" ? "Sign In" : "Sign Up"}
+          </button>
+        </form>
+
+        <p className="switch-mode">
+          {mode === "login" ? (
+            <>
+              Don’t have an account?{" "}
+              <span onClick={() => setMode("register")}>Create one</span>
+            </>
+          ) : (
+            <>
+              Already have an account?{" "}
+              <span onClick={() => setMode("login")}>Sign in</span>
+            </>
+          )}
+        </p>
+      </div>
     </div>
   );
 }
