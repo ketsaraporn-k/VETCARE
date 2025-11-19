@@ -20,7 +20,8 @@ export default function AdminInventoryUpdate() {
   const [bulkValue, setBulkValue] = useState(0);
   const [loading, setLoading] = useState(false);
   const [toast, setToast] = useState(null);
-  const [historyItem, setHistoryItem] = useState(null);
+  // ใช้ detail แทน history
+  const [detailItem, setDetailItem] = useState(null);
 
   const [showCreate, setShowCreate] = useState(false);
   const [creating, setCreating] = useState(false);
@@ -227,16 +228,22 @@ export default function AdminInventoryUpdate() {
     }
   };
 
-  const openHistory = async (id) => {
+  // เปิด detail แทน history
+  const openDetail = async (id) => {
     try {
       const med = items.concat([]).find(it => (it._id || it.id) === id);
       if (!med) return;
       const branchId = med._branchId;
-      const res = await api.get(`/api/medicines/${branchId}/${id}/history`).catch(() => api.get(`/medicines/${branchId}/${id}/history`));
-      setHistoryItem({ id, data: res.data || [] });
+      // backend route: GET /:branchId/:medId  -> returns { branch: {...}, medicine: {...} }
+      const res = await api.get(`/api/medicines/${branchId}/${id}`).catch(() => api.get(`/medicines/${branchId}/${id}`));
+      const data = res?.data || {};
+      // some backends return { branch, medicine } others might return { branch: {...}, medicine: {...} } or { medicine: {...} }
+      const medicine = data.medicine || data;
+      const branch = data.branch || { _id: branchId, branchName: med.branchName || "" };
+      setDetailItem({ id, branch, medicine });
     } catch (err) {
-      console.error("openHistory err", err);
-      setToast({ type: "error", text: "Load history failed" });
+      console.error("openDetail err", err);
+      setToast({ type: "error", text: "Load detail failed" });
     }
   };
 
@@ -442,7 +449,7 @@ export default function AdminInventoryUpdate() {
                         inlineUpdate(it._id || it.id, { change: Number(v) });
                       }}>+/-</button>
 
-                      <button onClick={() => openHistory(it._id || it.id)}>History</button>
+                      <button onClick={() => openDetail(it._id || it.id)}>Detail</button>
 
                       <button disabled title="Restock fixed" className="aiu-disabled">Set Restock</button>
 
@@ -474,22 +481,50 @@ export default function AdminInventoryUpdate() {
         </div>
       </div>
 
-      {historyItem && (
-        <div className="aiu-modal-backdrop" onClick={() => setHistoryItem(null)}>
+      {/* Detail modal */}
+      {detailItem && (
+        <div className="aiu-modal-backdrop" onClick={() => setDetailItem(null)}>
           <div className="aiu-modal" onClick={(e) => e.stopPropagation()}>
-            <h3>History for {historyItem.id}</h3>
-            {historyItem.data.length === 0 ? <div>No history</div> : (
-              <ul>
-                {historyItem.data.map((h, idx) => (
-                  <li key={idx}>
-                    <strong>{h.action}</strong> — by {h.byName || h.by || h.byId} at {h.at ? new Date(h.at).toLocaleString() : '-'}
-                    {h.note ? <div style={{ marginLeft: 8 }}>{h.note}</div> : null}
-                  </li>
-                ))}
-              </ul>
+            <h3>Detail — {detailItem.medicine?.medicineName || detailItem.medicine?.name || detailItem.id}</h3>
+
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+              <div><strong>Branch:</strong> {detailItem.branch?.branchName || detailItem.branch?._id}</div>
+              <div><strong>SKU:</strong> {detailItem.medicine?.sku || "-"}</div>
+              <div><strong>Stock:</strong> {String(detailItem.medicine?.stock ?? detailItem.medicine?.quantity ?? "-")}</div>
+              <div><strong>Unit:</strong> {detailItem.medicine?.unit || "-"}</div>
+              <div><strong>Low stock threshold:</strong> {detailItem.medicine?.lowStockThreshold ?? DEFAULT_REORDER_QTY}</div>
+              <div><strong>Category:</strong> {detailItem.medicine?.category || "-"}</div>
+              <div style={{ gridColumn: "1 / -1" }}><strong>Manufacturer:</strong> {detailItem.medicine?.manufacturer || "-"}</div>
+              <div style={{ gridColumn: "1 / -1" }}>
+                <strong>Notes / Description:</strong>
+                <div>{detailItem.medicine?.note || detailItem.medicine?.description || "-"}</div>
+              </div>
+            </div>
+
+            {/* show batches if available */}
+            {Array.isArray(detailItem.medicine?.batches) && detailItem.medicine.batches.length > 0 && (
+              <>
+                <h4 style={{ marginTop: 12 }}>Batches</h4>
+                <table className="aiu-table" style={{ width: "100%" }}>
+                  <thead>
+                    <tr><th>Batch</th><th>Qty</th><th>Expiry</th><th>Note</th></tr>
+                  </thead>
+                  <tbody>
+                    {detailItem.medicine.batches.map((b, idx) => (
+                      <tr key={idx}>
+                        <td>{b.batchNo || b.batch || "-"}</td>
+                        <td>{b.qty ?? b.quantity ?? "-"}</td>
+                        <td>{b.expiry ? new Date(b.expiry).toLocaleDateString() : "-"}</td>
+                        <td>{b.note || "-"}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </>
             )}
+
             <div style={{ marginTop: 12 }}>
-              <button onClick={() => setHistoryItem(null)}>Close</button>
+              <button onClick={() => setDetailItem(null)}>Close</button>
             </div>
           </div>
         </div>
