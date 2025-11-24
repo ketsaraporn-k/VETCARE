@@ -1,16 +1,22 @@
 // seedMedicines.js
-// เติมสต็อก "ยารักษาโรคทั่วไป" (ไม่ใช่วัคซีน) เข้า Branch.medicines
+// เติมสต็อก "ยารักษาโรคทั่วไป" (category = Medicine) เข้า Branch.medicines
+// รองรับหลายสาขา (สาขา 1,2,3) ใช้วิธีเดียวกับ seedVaccines.js
 
 const mongoose = require("mongoose");
 const Branch = require("./models/Branch"); // แก้ path ตามโปรเจ็กต์จริง
 
 // ---- ตั้งค่า Mongo URI ----
-const MONGO_URI =
-  process.env.MONGO_URI || "mongodb://127.0.0.1:27017/petClinic";
+const MONGO_URI = process.env.MONGO_URI || "mongodb://127.0.0.1:27017/petClinic";
+
+// ---- ระบุรายชื่อสาขาที่ต้องการเติม (เปลี่ยนชื่อได้ตามจริง) ----
+const TARGET_BRANCHES = [
+  { branchName: "North Clinic" },
+  { branchName: "Central Clinic" },
+  { branchName: "South Clinic" },
+];
 
 // ---- ข้อมูลยา (category = Medicine) ----
 const medicineDocs = [
-  // ===== Antibiotics =====
   {
     medicineName: "Amoxicillin-Clavulanate 250 mg – Dog/Cat",
     category: "Medicine",
@@ -19,11 +25,7 @@ const medicineDocs = [
     manufacturer: "VetCare",
     stock: 120,
     batches: [
-      {
-        batchId: "AMOCLAV-250-2025-A",
-        qty: 120,
-        expiryDate: new Date("2027-01-31"),
-      },
+      { batchId: "AMOCLAV-250-2025-A", qty: 120, expiryDate: new Date("2027-01-31") },
     ],
   },
   {
@@ -34,11 +36,7 @@ const medicineDocs = [
     manufacturer: "VetCare",
     stock: 100,
     batches: [
-      {
-        batchId: "CEF-250-2025-A",
-        qty: 100,
-        expiryDate: new Date("2026-12-31"),
-      },
+      { batchId: "CEF-250-2025-A", qty: 100, expiryDate: new Date("2026-12-31") },
     ],
   },
   {
@@ -49,11 +47,7 @@ const medicineDocs = [
     manufacturer: "VetCare",
     stock: 80,
     batches: [
-      {
-        batchId: "ENRO-50-2025-A",
-        qty: 80,
-        expiryDate: new Date("2026-10-31"),
-      },
+      { batchId: "ENRO-50-2025-A", qty: 80, expiryDate: new Date("2026-10-31") },
     ],
   },
   {
@@ -64,15 +58,9 @@ const medicineDocs = [
     manufacturer: "VetCare",
     stock: 90,
     batches: [
-      {
-        batchId: "METRO-250-2025-A",
-        qty: 90,
-        expiryDate: new Date("2026-09-30"),
-      },
+      { batchId: "METRO-250-2025-A", qty: 90, expiryDate: new Date("2026-09-30") },
     ],
   },
-
-  // ===== Pain / Anti-inflammatory =====
   {
     medicineName: "Carprofen 25 mg – Dog",
     category: "Medicine",
@@ -81,11 +69,7 @@ const medicineDocs = [
     manufacturer: "VetCare",
     stock: 80,
     batches: [
-      {
-        batchId: "CARP-25-2025-A",
-        qty: 80,
-        expiryDate: new Date("2027-03-31"),
-      },
+      { batchId: "CARP-25-2025-A", qty: 80, expiryDate: new Date("2027-03-31") },
     ],
   },
   {
@@ -96,11 +80,7 @@ const medicineDocs = [
     manufacturer: "VetCare",
     stock: 60,
     batches: [
-      {
-        batchId: "CARP-75-2025-A",
-        qty: 60,
-        expiryDate: new Date("2027-03-31"),
-      },
+      { batchId: "CARP-75-2025-A", qty: 60, expiryDate: new Date("2027-03-31") },
     ],
   },
   {
@@ -111,11 +91,7 @@ const medicineDocs = [
     manufacturer: "VetCare",
     stock: 250,
     batches: [
-      {
-        batchId: "MELO-1_5-2025-A",
-        qty: 250,
-        expiryDate: new Date("2027-02-28"),
-      },
+      { batchId: "MELO-1_5-2025-A", qty: 250, expiryDate: new Date("2027-02-28") },
     ],
   },
   {
@@ -126,15 +102,9 @@ const medicineDocs = [
     manufacturer: "VetCare",
     stock: 100,
     batches: [
-      {
-        batchId: "PRED-5-2025-A",
-        qty: 100,
-        expiryDate: new Date("2026-11-30"),
-      },
+      { batchId: "PRED-5-2025-A", qty: 100, expiryDate: new Date("2026-11-30") },
     ],
   },
-
-  // ===== GI / Anti-emetic =====
   {
     medicineName: "Omeprazole 10 mg – Dog/Cat",
     category: "Medicine",
@@ -143,11 +113,7 @@ const medicineDocs = [
     manufacturer: "VetCare",
     stock: 80,
     batches: [
-      {
-        batchId: "OME-10-2025-A",
-        qty: 80,
-        expiryDate: new Date("2026-10-31"),
-      },
+      { batchId: "OME-10-2025-A", qty: 80, expiryDate: new Date("2026-10-31") },
     ],
   },
   {
@@ -158,11 +124,7 @@ const medicineDocs = [
     manufacturer: "VetCare",
     stock: 40,
     batches: [
-      {
-        batchId: "MARO-10-2025-A",
-        qty: 40,
-        expiryDate: new Date("2026-09-30"),
-      },
+      { batchId: "MARO-10-2025-A", qty: 40, expiryDate: new Date("2026-09-30") },
     ],
   },
   {
@@ -173,15 +135,9 @@ const medicineDocs = [
     manufacturer: "VetCare",
     stock: 500,
     batches: [
-      {
-        batchId: "ELECTRO-2025-A",
-        qty: 500,
-        expiryDate: new Date("2026-08-31"),
-      },
+      { batchId: "ELECTRO-2025-A", qty: 500, expiryDate: new Date("2026-08-31") },
     ],
   },
-
-  // ===== Dewormer / Parasite control =====
   {
     medicineName: "Praziquantel 50 mg – Dog/Cat",
     category: "Medicine",
@@ -190,11 +146,7 @@ const medicineDocs = [
     manufacturer: "VetCare",
     stock: 80,
     batches: [
-      {
-        batchId: "PRAZ-50-2025-A",
-        qty: 80,
-        expiryDate: new Date("2027-01-31"),
-      },
+      { batchId: "PRAZ-50-2025-A", qty: 80, expiryDate: new Date("2027-01-31") },
     ],
   },
   {
@@ -205,11 +157,7 @@ const medicineDocs = [
     manufacturer: "VetCare",
     stock: 200,
     batches: [
-      {
-        batchId: "PYRA-2025-A",
-        qty: 200,
-        expiryDate: new Date("2026-12-31"),
-      },
+      { batchId: "PYRA-2025-A", qty: 200, expiryDate: new Date("2026-12-31") },
     ],
   },
   {
@@ -220,11 +168,7 @@ const medicineDocs = [
     manufacturer: "VetCare",
     stock: 60,
     batches: [
-      {
-        batchId: "MILB-PRAZ-2025-A",
-        qty: 60,
-        expiryDate: new Date("2027-04-30"),
-      },
+      { batchId: "MILB-PRAZ-2025-A", qty: 60, expiryDate: new Date("2027-04-30") },
     ],
   },
   {
@@ -235,11 +179,7 @@ const medicineDocs = [
     manufacturer: "VetCare",
     stock: 40,
     batches: [
-      {
-        batchId: "FIPRO-DOG-M-2025-A",
-        qty: 40,
-        expiryDate: new Date("2026-10-31"),
-      },
+      { batchId: "FIPRO-DOG-M-2025-A", qty: 40, expiryDate: new Date("2026-10-31") },
     ],
   },
   {
@@ -250,15 +190,9 @@ const medicineDocs = [
     manufacturer: "VetCare",
     stock: 40,
     batches: [
-      {
-        batchId: "FIPRO-CAT-2025-A",
-        qty: 40,
-        expiryDate: new Date("2026-10-31"),
-      },
+      { batchId: "FIPRO-CAT-2025-A", qty: 40, expiryDate: new Date("2026-10-31") },
     ],
   },
-
-  // ===== Allergy / Skin / Ear / Eye =====
   {
     medicineName: "Chlorpheniramine 4 mg – Dog/Cat",
     category: "Medicine",
@@ -267,11 +201,7 @@ const medicineDocs = [
     manufacturer: "VetCare",
     stock: 120,
     batches: [
-      {
-        batchId: "CPM-4-2025-A",
-        qty: 120,
-        expiryDate: new Date("2026-09-30"),
-      },
+      { batchId: "CPM-4-2025-A", qty: 120, expiryDate: new Date("2026-09-30") },
     ],
   },
   {
@@ -282,11 +212,7 @@ const medicineDocs = [
     manufacturer: "VetCare",
     stock: 30,
     batches: [
-      {
-        batchId: "EAR-GCB-2025-A",
-        qty: 30,
-        expiryDate: new Date("2026-08-31"),
-      },
+      { batchId: "EAR-GCB-2025-A", qty: 30, expiryDate: new Date("2026-08-31") },
     ],
   },
   {
@@ -297,11 +223,7 @@ const medicineDocs = [
     manufacturer: "VetCare",
     stock: 30,
     batches: [
-      {
-        batchId: "EYE-CHLOR-2025-A",
-        qty: 30,
-        expiryDate: new Date("2026-07-31"),
-      },
+      { batchId: "EYE-CHLOR-2025-A", qty: 30, expiryDate: new Date("2026-07-31") },
     ],
   },
   {
@@ -312,15 +234,9 @@ const medicineDocs = [
     manufacturer: "VetCare",
     stock: 25,
     batches: [
-      {
-        batchId: "SKIN-MH-2025-A",
-        qty: 25,
-        expiryDate: new Date("2026-09-30"),
-      },
+      { batchId: "SKIN-MH-2025-A", qty: 25, expiryDate: new Date("2026-09-30") },
     ],
   },
-
-  // ===== Fluids / Injectables =====
   {
     medicineName: "Lactated Ringer’s Solution",
     category: "Medicine",
@@ -329,11 +245,7 @@ const medicineDocs = [
     manufacturer: "VetCare",
     stock: 2000,
     batches: [
-      {
-        batchId: "LR-2025-A",
-        qty: 2000,
-        expiryDate: new Date("2027-01-31"),
-      },
+      { batchId: "LR-2025-A", qty: 2000, expiryDate: new Date("2027-01-31") },
     ],
   },
   {
@@ -344,11 +256,7 @@ const medicineDocs = [
     manufacturer: "VetCare",
     stock: 2000,
     batches: [
-      {
-        batchId: "NS-2025-A",
-        qty: 2000,
-        expiryDate: new Date("2027-01-31"),
-      },
+      { batchId: "NS-2025-A", qty: 2000, expiryDate: new Date("2027-01-31") },
     ],
   },
   {
@@ -359,15 +267,9 @@ const medicineDocs = [
     manufacturer: "VetCare",
     stock: 500,
     batches: [
-      {
-        batchId: "VB-2025-A",
-        qty: 500,
-        expiryDate: new Date("2026-12-31"),
-      },
+      { batchId: "VB-2025-A", qty: 500, expiryDate: new Date("2026-12-31") },
     ],
   },
-
-  // ===== Sedation / Misc =====
   {
     medicineName: "Butorphanol 10 mg/ml Injection",
     category: "Medicine",
@@ -376,11 +278,7 @@ const medicineDocs = [
     manufacturer: "VetCare",
     stock: 100,
     batches: [
-      {
-        batchId: "BUTOR-2025-A",
-        qty: 100,
-        expiryDate: new Date("2026-11-30"),
-      },
+      { batchId: "BUTOR-2025-A", qty: 100, expiryDate: new Date("2026-11-30") },
     ],
   },
   {
@@ -391,62 +289,70 @@ const medicineDocs = [
     manufacturer: "VetCare",
     stock: 100,
     batches: [
-      {
-        batchId: "ACE-2025-A",
-        qty: 100,
-        expiryDate: new Date("2026-11-30"),
-      },
+      { batchId: "ACE-2025-A", qty: 100, expiryDate: new Date("2026-11-30") },
     ],
   },
 ];
 
+// ---- helper: normalize key for comparison ----
+function keyFor(m) {
+  return `${(m.medicineName || "").toLowerCase()}___${(m.category || "").toLowerCase()}`;
+}
+
 // ---- main seeding logic ----
+async function seedForBranch(target, index) {
+  let branch;
+  if (target.branchName) {
+    branch = await Branch.findOne({ branchName: target.branchName });
+  }
+
+  if (!branch) {
+    branch = await Branch.findOne().skip(index).exec();
+  }
+
+  if (!branch) {
+    console.warn(`⚠️ ไม่พบสาขา '${target.branchName || index}', จะสร้างสาขาใหม่ขึ้นมา`);
+    branch = new Branch({ branchName: target.branchName || `Branch ${index + 1}`, medicines: [] });
+  }
+
+  console.log(`\n--- Processing branch: ${branch.branchName} (${branch._id ? branch._id.toString() : 'new'}) ---`);
+
+  branch.medicines = branch.medicines || [];
+  const existing = branch.medicines;
+  const existingKeys = new Set(existing.map((m) => keyFor(m)));
+
+  let added = 0;
+  for (const v of medicineDocs) {
+    const k = keyFor(v);
+    if (existingKeys.has(k)) {
+      console.log('• ข้าม (มีอยู่แล้ว):', v.medicineName);
+      continue;
+    }
+    branch.medicines.push(Object.assign({}, v));
+    existingKeys.add(k);
+    added++;
+    console.log('✓ เพิ่ม:', v.medicineName);
+  }
+
+  if (added > 0) {
+    await branch.save();
+    console.log(`✅ บันทึกเรียบร้อยในสาขา '${branch.branchName}' — เพิ่ม ${added} รายการ`);
+  } else {
+    console.log(`ℹ️ ไม่มี Medicine ใหม่ให้เพิ่มในสาขา '${branch.branchName}'`);
+  }
+}
+
 async function main() {
   try {
     console.log("Connecting to MongoDB:", MONGO_URI);
     await mongoose.connect(MONGO_URI);
 
-    // หา branch เป้าหมาย
-    let branch = await Branch.findOne({ branchName: "North Clinic" });
-    if (!branch) {
-      console.warn(
-        '⚠️ ไม่พบสาขา "North Clinic" จะใช้สาขาแรกในระบบแทน (ถ้ามี)'
-      );
-      branch = await Branch.findOne({});
+    for (let i = 0; i < TARGET_BRANCHES.length; i++) {
+      const t = TARGET_BRANCHES[i];
+      await seedForBranch(t, i);
     }
 
-    if (!branch) {
-      console.error("❌ ไม่พบ branch ในฐานข้อมูลเลย หยุดทำงาน");
-      process.exit(1);
-    }
-
-    console.log("Using branch:", branch.branchName, branch._id.toString());
-
-    const existing = branch.medicines || [];
-    let added = 0;
-
-    for (const v of medicineDocs) {
-      const found = existing.find(
-        (m) =>
-          (m.medicineName || "").toLowerCase() ===
-            v.medicineName.toLowerCase() &&
-          (m.category || "").toLowerCase() === v.category.toLowerCase()
-      );
-      if (found) {
-        console.log("• ข้าม (มีอยู่แล้ว):", v.medicineName);
-        continue;
-      }
-      branch.medicines.push(v);
-      added++;
-      console.log("✓ เพิ่ม:", v.medicineName);
-    }
-
-    if (added > 0) {
-      await branch.save();
-      console.log(`✅ บันทึกเรียบร้อย เพิ่มใหม่ทั้งหมด ${added} รายการ`);
-    } else {
-      console.log("ℹ️ ไม่มี Medicine ใหม่ให้เพิ่ม (รายการทั้งหมดมีอยู่แล้ว)");
-    }
+    console.log('\nAll done.');
   } catch (err) {
     console.error("❌ Seed error:", err);
   } finally {

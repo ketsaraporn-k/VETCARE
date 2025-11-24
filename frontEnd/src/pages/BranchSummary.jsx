@@ -353,10 +353,10 @@ export default function BranchSummary() {
           <h3>{overview.branchName || getBranchNameFromBranches(selectedBranchId)}</h3>
 
           <div className="bp-cards">
-            <div className="bp-card">
+            {/* <div className="bp-card">
               <div className="bp-card-title">Active Patients (est.)</div>
               <div className="bp-card-value">{overview.patients ?? "-"}</div>
-            </div>
+            </div> */}
 
             <div className="bp-card">
               <div className="bp-card-title">Today Appointments</div>
@@ -400,7 +400,7 @@ export default function BranchSummary() {
             )}
           </section>
 
-          <section className="bp-section">
+          {/* <section className="bp-section">
             <h3>Recent Treatments</h3>
             {treatments.length === 0 ? <p className="bp-muted">No recent treatments</p> :
               <table className="bp-table">
@@ -436,7 +436,7 @@ export default function BranchSummary() {
                 </tbody>
               </table>
             }
-          </section>
+          </section> */}
         </>
       )}
 

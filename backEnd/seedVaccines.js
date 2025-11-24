@@ -1,13 +1,19 @@
 // seedVaccines.js
-// เติมสต็อกวัคซีนเข้า Branch.medicines สำหรับสาขา 1
+// เติมสต็อกวัคซีนเข้า Branch.medicines สำหรับสาขา 1, 2 และ 3
 
 const mongoose = require("mongoose");
-const Branch = require("./models/Branch");
- // แก้ path ตามโปรเจกต์จริงได้เลย
+const Branch = require("./models/Branch"); // แก้ path ตามโปรเจกต์จริงได้เลย
 
 // ---- ตั้งค่า Mongo URI ----
-const MONGO_URI =
-  process.env.MONGO_URI || "mongodb://127.0.0.1:27017/petClinic";
+const MONGO_URI = process.env.MONGO_URI || "mongodb://127.0.0.1:27017/petClinic";
+
+// ---- ระบุรายชื่อสาขาที่ต้องการเติม (เปลี่ยนชื่อได้ตามจริง) ----
+// ลำดับในอาเรย์จะใช้เป็น fallback index หากไม่พบชื่อสาขา
+const TARGET_BRANCHES = [
+  { branchName: "North Clinic" },
+  { branchName: "Central Clinic" },
+  { branchName: "South Clinic" },
+];
 
 // ---- ข้อมูลวัคซีนทั้งหมด (ตาม VACCINE_OPTIONS) ----
 const vaccineDocs = [
@@ -19,7 +25,7 @@ const vaccineDocs = [
     manufacturer: "VetCare",
     stock: 50,
     batches: [
-      { batchId: "RAB-2025-A", qty: 50, expiryDate: new Date("2026-12-31") },
+      { batchId: "RAB-2025-B", qty: 50, expiryDate: new Date("2026-12-31") },
     ],
   },
   {
@@ -287,54 +293,70 @@ const vaccineDocs = [
   },
 ];
 
+// ---- helper: normalize key for comparison ----
+function keyFor(m) {
+  return `${(m.medicineName || "").toLowerCase()}___${(m.category || "").toLowerCase()}`;
+}
+
 // ---- main seeding logic ----
+async function seedForBranch(target, index) {
+  // target: { branchName }
+  // index: fallback index if name not found
+  let branch;
+  if (target.branchName) {
+    branch = await Branch.findOne({ branchName: target.branchName });
+  }
+
+  if (!branch) {
+    // fallback: take the nth branch in collection (if exists)
+    branch = await Branch.findOne().skip(index).exec();
+  }
+
+  if (!branch) {
+    // ถ้ายังไม่พบเลย ให้สร้างสาขาใหม่เพื่อไม่ให้ seed หยุด
+    console.warn(`⚠️ ไม่พบสาขา '${target.branchName || index}', จะสร้างสาขาใหม่ขึ้นมา`);
+    branch = new Branch({ branchName: target.branchName || `Branch ${index + 1}`, medicines: [] });
+  }
+
+  console.log(`\n--- Processing branch: ${branch.branchName} (${branch._id ? branch._id.toString() : 'new'}) ---`);
+
+  branch.medicines = branch.medicines || [];
+  const existing = branch.medicines;
+  const existingKeys = new Set(existing.map((m) => keyFor(m)));
+
+  let added = 0;
+  for (const v of vaccineDocs) {
+    const k = keyFor(v);
+    if (existingKeys.has(k)) {
+      console.log('• ข้าม (มีอยู่แล้ว):', v.medicineName);
+      continue;
+    }
+    // push a shallow clone to avoid shared references
+    branch.medicines.push(Object.assign({}, v));
+    existingKeys.add(k);
+    added++;
+    console.log('✓ เพิ่ม:', v.medicineName);
+  }
+
+  if (added > 0) {
+    await branch.save();
+    console.log(`✅ บันทึกเรียบร้อยในสาขา '${branch.branchName}' — เพิ่ม ${added} รายการ`);
+  } else {
+    console.log(`ℹ️ ไม่มีวัคซีนใหม่ให้เพิ่มในสาขา '${branch.branchName}'`);
+  }
+}
+
 async function main() {
   try {
     console.log("Connecting to MongoDB:", MONGO_URI);
     await mongoose.connect(MONGO_URI);
 
-    // หา branch เป้าหมาย: ใช้จากชื่อ หรือใช้ตัวแรกของ collection
-    let branch = await Branch.findOne({ branchName: "North Clinic" });
-    if (!branch) {
-      console.warn(
-        '⚠️ ไม่พบสาขา "North Clinic" จะใช้สาขาแรกในระบบแทน (ถ้ามี)'
-      );
-      branch = await Branch.findOne({});
+    for (let i = 0; i < TARGET_BRANCHES.length; i++) {
+      const t = TARGET_BRANCHES[i];
+      await seedForBranch(t, i);
     }
 
-    if (!branch) {
-      console.error("❌ ไม่พบ branch ในฐานข้อมูลเลย หยุดทำงาน");
-      process.exit(1);
-    }
-
-    console.log("Using branch:", branch.branchName, branch._id.toString());
-
-    const existing = branch.medicines || [];
-
-    // กันการซ้ำ: ถ้ามี medicineName ตรงกันแล้วจะไม่เพิ่มซ้ำ
-    let added = 0;
-    for (const v of vaccineDocs) {
-      const found = existing.find(
-        (m) =>
-          (m.medicineName || "").toLowerCase() ===
-            v.medicineName.toLowerCase() &&
-          (m.category || "").toLowerCase() === v.category.toLowerCase()
-      );
-      if (found) {
-        console.log("• ข้าม (มีอยู่แล้ว):", v.medicineName);
-        continue;
-      }
-      branch.medicines.push(v);
-      added++;
-      console.log("✓ เพิ่ม:", v.medicineName);
-    }
-
-    if (added > 0) {
-      await branch.save();
-      console.log(`✅ บันทึกเรียบร้อย เพิ่มใหม่ทั้งหมด ${added} รายการ`);
-    } else {
-      console.log("ℹ️ ไม่มีวัคซีนใหม่ให้เพิ่ม (รายการทั้งหมดมีอยู่แล้ว)");
-    }
+    console.log('\nAll done.');
   } catch (err) {
     console.error("❌ Seed error:", err);
   } finally {
